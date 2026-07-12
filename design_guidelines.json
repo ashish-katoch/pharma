@@ -1,0 +1,153 @@
+{
+  "theme": "light",
+  "typography": {
+    "font_families": {
+      "heading": "Work Sans, sans-serif",
+      "body": "IBM Plex Sans, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "hierarchy": {
+      "h1": "text-4xl font-semibold tracking-tight leading-none",
+      "h2": "text-2xl font-semibold tracking-tight leading-none",
+      "h3": "text-xl font-medium tracking-tight",
+      "body_large": "text-lg font-normal leading-relaxed",
+      "body": "text-base font-normal leading-relaxed",
+      "label": "text-xs font-semibold uppercase tracking-widest text-slate-500",
+      "bill_amount": "text-5xl font-black tracking-tighter"
+    },
+    "rules": [
+      "Never use generic Inter for headings.",
+      "Use IBM Plex Sans for body text to guarantee maximum readability for medicine names, dosages (e.g., 500mg), and batch numbers.",
+      "Bill total amounts must use 'bill_amount' (text-5xl font-black) to be instantly scannable by pharmacist and customer."
+    ]
+  },
+  "colors": {
+    "palette": {
+      "base": {
+        "white": "#FFFFFF",
+        "surface": "#F8FAFC",
+        "border": "#E2E8F0",
+        "border_dark": "#CBD5E1"
+      },
+      "text": {
+        "primary": "#0F172A",
+        "secondary": "#475569",
+        "muted": "#94A3B8",
+        "inverse": "#FFFFFF"
+      },
+      "brand": {
+        "medical_blue": "#2563EB",
+        "medical_blue_hover": "#1D4ED8",
+        "medical_blue_light": "#EFF6FF"
+      },
+      "status": {
+        "success": "#10B981",
+        "success_bg": "#D1FAE5",
+        "warning": "#F59E0B",
+        "warning_bg": "#FEF3C7",
+        "error": "#EF4444",
+        "error_bg": "#FEE2E2",
+        "info": "#3B82F6",
+        "info_bg": "#DBEAFE"
+      }
+    },
+    "rules": [
+      "Use Medical Blue strictly for the primary CTA (New Bill, Pay, Save).",
+      "Use 'status' colors exclusively for stock expiry/warnings (Red < 30 days, Amber < 90 days, Green > 90 days).",
+      "Never use complete transparent backgrounds for overlays. Use solid or heavily blurred surfaces."
+    ]
+  },
+  "spacing_and_layout": {
+    "spacing_scale": {
+      "touch_target_min": "48px",
+      "screen_padding": "p-4 md:p-6",
+      "item_gap": "gap-3",
+      "section_gap": "gap-6"
+    },
+    "layouts": {
+      "global": "Single column, mobile-first constraint. No horizontal scrolling outside of specific carousels. Full viewport height.",
+      "bottom_tab_nav": "Fixed at bottom, h-16 or h-20, evenly distributed icons. Active state in Medical Blue, inactive in Slate 400.",
+      "billing_screen": "Sticky search bar at top (always focused), scrollable cart list in middle, sticky total & 'Pay/Print' button at bottom (Thumb Zone).",
+      "safe_area": "Ensure padding bottom accounts for mobile safe areas."
+    },
+    "rules": [
+      "Thumb Zone Design: All critical actions (Add to Bill, Pay, Confirm) must be placed in the bottom 30% of the screen.",
+      "Touch targets must be at least 48x48px (p-3 or p-4 equivalents) to ensure error-free tapping in a fast-paced environment."
+    ]
+  },
+  "components": {
+    "buttons": {
+      "primary": "Pill-shaped (rounded-full) or large slightly rounded (rounded-xl), Medical Blue background, White text, font-semibold. Minimum height 56px.",
+      "secondary": "Outline or Ghost, Slate 200 border, Slate 800 text.",
+      "fab": "Floating Action Button. Bottom right or Center Bottom. Massive (64x64px), Medical Blue, heavy drop shadow."
+    },
+    "inputs": {
+      "search": "Large height (56px), solid surface background (Slate 50), subtle border, sticky top, large clear text.",
+      "stepper": "Large + / - touch targets flanking the quantity number. No tiny dropdowns."
+    },
+    "cards": {
+      "medicine_item": "Flat background (White), 1px subtle border (border-slate-200), no heavy drop shadows. Sharp corner radius (rounded-lg).",
+      "confidence_chip": "Inline badge next to matched medicine name. Green/Success for exact match. Amber/Warning + 'Confirm?' text for uncertain match."
+    },
+    "rules": [
+      "Abandon generic card drop-shadows. Use flat, clean, bordered components for a high-density, utility-first look.",
+      "Feedback: Buttons must have immediate active/pressed states (e.g., scale down or darken) for instant physical feedback."
+    ]
+  },
+  "imagery": {
+    "image_urls": [
+      {
+        "url": "https://images.unsplash.com/photo-1550572017-4fcdbb59cc32?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODd8MHwxfHNlYXJjaHwzfHxtZWRpY2luZSUyMGJveGVzfGVufDB8fHx8MTc4Mzg5MjU1Nnww&ixlib=rb-4.1.0&q=85",
+        "description": "Medicine box representing inventory items",
+        "category": "inventory_placeholder"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1522335579687-9c718c5184d7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODd8MHwxfHNlYXJjaHwyfHxtZWRpY2luZSUyMGJveGVzfGVufDB8fHx8MTc4Mzg5MjU1Nnww&ixlib=rb-4.1.0&q=85",
+        "description": "Medication capsules representing specific drug formulations",
+        "category": "medicine_detail_header"
+      }
+    ],
+    "rules": [
+      "Use these imagery exclusively where an image is necessary (e.g., visual catalogue empty states, or onboarding backgrounds). Never use generic placeholders."
+    ]
+  },
+  "icons": {
+    "library": "lucide-react",
+    "usage": "Use thick, legible icons. Size 24px default, 32px for main bottom tabs.",
+    "rules": [
+      "Do NOT use emojis as icons.",
+      "Ensure color contrast for active vs inactive icons."
+    ]
+  },
+  "motion_and_interactions": {
+    "rules": [
+      "Micro-interactions ONLY. No slow page transitions.",
+      "Skeleton screens for loading states (especially inventory search) rather than generic spinners.",
+      "Instant feedback simulation (fast color change on press) for primary billing buttons."
+    ]
+  },
+  "accessibility": {
+    "rules": [
+      "All text must meet 4.5:1 contrast ratio against its background.",
+      "Rely on color AND text for status (e.g., don't just use red, use Red + text 'Expiring in 20 days').",
+      "All interactive elements MUST include a data-testid attribute (e.g., data-testid='new-bill-button')."
+    ]
+  },
+  "instructions_to_main_agent": [
+    "You are building a mobile web app UI (Expo React Native equivalent styled with Tailwind/Shadcn primitives).",
+    "Focus heavily on the 'Thumb Zone'. The 'New Bill' CTA and 'Pay' CTA must be massive and anchored to the bottom.",
+    "Do NOT build a cluttered dashboard. The Home screen is just quick tiles and today's urgent stats.",
+    "The billing search bar must be dominant at the top and auto-focused.",
+    "For the Confidence Chips on uncertain matches, use a distinct UI pattern (e.g., amber background with 'Tap to verify' text) right inline with the search result.",
+    "Always use the provided JSON palette and typography structure. No 'Inter' font for headings.",
+    "Apply data-testid universally to inputs, buttons, and actionable lists."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "You tend to converge toward generic outputs. Avoid 'AI slop'. Make this POS system feel like a high-end, rapid-fire operational tool.",
+    "Don't make generic centered layouts. Left-align text for readability, center-align only large CTAs.",
+    "Use flat, crisp borders instead of muddy drop shadows.",
+    "Every interaction needs a micro-animation (pressed state, hover state if on web).",
+    "Never use AI assistant emojis.",
+    "For toast notifications (like printer failures or stock warnings), use `sonner`."
+  ]
+}
