@@ -1,0 +1,45 @@
+{
+  "summary": "Backend: 17/17 pytest tests pass — health, auth (owner+staff), staff CRUD w/ role checks, shop GET/PUT with owner-only enforcement, medicines list/search/CRUD, batches list/create, bills FEFO (verified earliest-expiry batch picked first), bill list/get, insufficient-stock 400, cancel bill reverses stock, reports (low-stock + expiring window) and stats/today. GST split cgst=sgst and grand_total matches MRP-inclusive calc.\n\nFrontend (Expo web preview @ 390x844): Login prefill works; owner logs in and lands on Home which shows KPIs (Today Sales, Low Stock, Expiring). New Bill CTA opens Billing. Search returns Paracetamol, add-to-cart works, quantity stepper increments (₹30 → ₹60), Checkout modal opens, saving creates a bill and navigates to /bill/[id] showing bill number, GST split, Share PDF and Cancel Bill buttons. Inventory shows 20 seeded medicines, filter chips render, medicine detail page shows batches with color-coded expiry pills (amber for 45d, green for 399d). Reports tab shows Expiring/Low Stock with 30/60/90 window selectors. Stock In screen renders with search + Add-new-medicine. Settings for owner shows Manage staff + Save Profile + Sign Out. Staff role hides Manage Staff and Save (read-only).\n\nWeb-preview limitations detected (not code bugs but affect testability): (1) Alert.alert-based confirm dialogs on react-native-web (Cancel Bill, Sign Out) do not reliably invoke the destructive-button onPress via browser confirm — verified via multiple runs that clicking Cancel Bill leaves status active and Sign Out stays on settings. Native mobile behaviour will be correct. Consider replacing multi-button Alert.alert with a custom in-app confirmation modal for better web parity.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "bill/[id].tsx Cancel Bill", "issue": "Uses Alert.alert with multi-button on RN-web; browser confirm accept does not trigger destructive onPress — Cancel Bill button appears non-functional in web preview. Reference: /app/frontend/app/bill/[id].tsx:154", "testID": "bill-cancel-btn", "priority": "MEDIUM"},
+      {"component": "(tabs)/settings.tsx Sign Out", "issue": "Same Alert.alert pattern — Sign Out on web preview does not navigate to /login. Reference: /app/frontend/app/(tabs)/settings.tsx:66", "testID": "settings-logout", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Billing Checkout modal", "issues": ["On 390x844 the Save Bill button sits below the fold when the modal opens; user must scroll inside the modal. Consider making the modal a full-screen sheet with sticky footer for the save button."]}
+    ],
+    "react_native_issues": [
+      {"component": "styles across app", "issue": "Console warnings: '\"shadow*\" style props are deprecated. Use \"boxShadow\".' — appears repeatedly on web. Migrate shadowColor/shadowOffset/shadowOpacity/shadowRadius to the new boxShadow shorthand for RN 0.76+ web compatibility."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Consider replacing Alert.alert 2-button confirms (Cancel Bill, Sign Out, Save Profile failures, Delete Staff) with an in-app custom modal so the flow works identically on native and web preview.",
+    "Migrate shadow* style props to boxShadow to silence RN-web deprecation warnings.",
+    "Checkout modal on mobile viewport: pin the Save Bill button to a sticky footer so it stays visible without scrolling."
+  ],
+  "critical_code_review_comments": [
+    "server.py is ~780 lines; consider splitting into routers/{auth,medicines,batches,bills,reports}.py + models.py before it grows further.",
+    "seed() runs on every startup — currently idempotent per-collection; good. Medicines seeding checks count==0 so adding new starter items later will be skipped.",
+    "Bill totals: since MRP is treated as GST-inclusive, subtotal (gross) is stored but bill_discount is applied on taxable_total which is already ex-GST; verify UI totals consistency (frontend uses grand_total which is fine).",
+    "get_bill/get list return legacy bills without status default — legacy bills would fail Pydantic if 'status' missing; consider `status: str = 'active'` default in BillOut.",
+    "audit endpoint /api/audit is owner-only — fine. No pagination beyond limit — acceptable for MVP."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (new)"
+  ],
+  "success_rate": {"backend": "100% (17/17)", "frontend": "~90% — core flows verified; Alert.alert confirms don't fire on web preview"},
+  "seed_data_creation": "Backend already auto-seeds 2 users, shop, 20 medicines with 2 batches each (near-expiry + far-expiry) on startup. Tests create/delete TEST_-prefixed medicines and staff; test_shop restores original phone.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All backend endpoints verified end-to-end. Login is form-urlencoded (username=email). FEFO confirmed via earliest-expiry-batch assertion. Insufficient-stock returns 400. Cancel bill correctly re-increments batch quantity. For frontend, Alert.alert-based confirms behave inconsistently on RN-web preview; use page.on('dialog', d.accept()) but note some multi-button Alerts may still not invoke onPress. Test on actual mobile / expo go for true UX validation.",
+  "rca_of_issue": "N/A — no blocking bugs. Two web-preview limitations documented above."
+}
