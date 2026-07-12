@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
+import { confirmDestructive } from "@/src/confirm";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
 type StaffUser = {
@@ -69,21 +70,14 @@ export default function StaffScreen() {
 
   const removeStaff = (u: StaffUser) => {
     if (u.role === "owner") return;
-    Alert.alert("Remove staff?", `Delete ${u.email}?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await api(`/auth/staff/${u.id}`, { method: "DELETE" });
-            await load();
-          } catch (e: any) {
-            Alert.alert("Failed", e?.message || "");
-          }
-        },
-      },
-    ]);
+    confirmDestructive("Remove staff?", `Delete ${u.email}?`, "Delete", async () => {
+      try {
+        await api(`/auth/staff/${u.id}`, { method: "DELETE" });
+        await load();
+      } catch (e: any) {
+        Alert.alert("Failed", e?.message || "");
+      }
+    });
   };
 
   return (

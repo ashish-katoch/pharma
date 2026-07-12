@@ -14,6 +14,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { api } from "@/src/api";
+import { confirmDestructive } from "@/src/confirm";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
 const rupee = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -152,24 +153,17 @@ export default function BillDetail() {
   };
 
   const cancelBill = async () => {
-    Alert.alert("Cancel bill?", "Stock will be returned to batches.", [
-      { text: "Keep", style: "cancel" },
-      {
-        text: "Cancel bill",
-        style: "destructive",
-        onPress: async () => {
-          setCancelling(true);
-          try {
-            await api(`/bills/${id}/cancel`, { method: "POST" });
-            await load();
-          } catch (e: any) {
-            Alert.alert("Failed", e?.message || "");
-          } finally {
-            setCancelling(false);
-          }
-        },
-      },
-    ]);
+    confirmDestructive("Cancel bill?", "Stock will be returned to batches.", "Cancel bill", async () => {
+      setCancelling(true);
+      try {
+        await api(`/bills/${id}/cancel`, { method: "POST" });
+        await load();
+      } catch (e: any) {
+        Alert.alert("Failed", e?.message || "");
+      } finally {
+        setCancelling(false);
+      }
+    });
   };
 
   if (loading || !bill) {

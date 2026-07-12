@@ -14,6 +14,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import { useAuth } from "@/src/auth";
+import { confirmDestructive } from "@/src/confirm";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
 type Shop = {
@@ -64,17 +65,10 @@ export default function Settings() {
   };
 
   const doLogout = async () => {
-    Alert.alert("Sign out?", "You'll need to sign in again.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign out",
-        style: "destructive",
-        onPress: async () => {
-          await logout();
-          router.replace("/login");
-        },
-      },
-    ]);
+    confirmDestructive("Sign out?", "You'll need to sign in again.", "Sign out", async () => {
+      await logout();
+      router.replace("/login");
+    });
   };
 
   if (loading || !shop) {

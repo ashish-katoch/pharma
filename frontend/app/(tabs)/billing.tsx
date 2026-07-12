@@ -18,6 +18,7 @@ import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { api } from "@/src/api";
 import { useCart, Medicine } from "@/src/cart";
+import { confirmDestructive } from "@/src/confirm";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
 const rupee = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -108,10 +109,7 @@ export default function Billing() {
             <TouchableOpacity
               testID="billing-clear-cart"
               onPress={() =>
-                Alert.alert("Clear cart?", "This will remove all items.", [
-                  { text: "Cancel", style: "cancel" },
-                  { text: "Clear", style: "destructive", onPress: () => cart.clear() },
-                ])
+                confirmDestructive("Clear cart?", "This will remove all items.", "Clear", () => cart.clear())
               }
             >
               <Feather name="trash-2" size={20} color={COLORS.danger} />
