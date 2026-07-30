@@ -20,14 +20,19 @@ import { api } from "@/src/api";
 import { useCart, Medicine } from "@/src/cart";
 import { confirmDestructive } from "@/src/confirm";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { searchMedicines } from "@/src/catalog";
+import { useSync } from "@/src/sync";
+import { buildReceiptText, sendOnWhatsApp } from "@/src/whatsapp";
 
 const rupee = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
 export default function Billing() {
   const router = useRouter();
   const cart = useCart();
+  const sync = useSync();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Medicine[]>([]);
+  const [offline, setOffline] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -35,8 +40,9 @@ export default function Billing() {
   const search = useCallback(async (q: string) => {
     setLoading(true);
     try {
-      const items = await api<Medicine[]>(`/medicines${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+      const { items, source } = await searchMedicines(q);
       setResults(items);
+      setOffline(source === "cache");
     } catch {
       setResults([]);
     } finally {
@@ -62,9 +68,9 @@ export default function Billing() {
     const billDisc = afterLine * (cart.billDiscountPct / 100);
     const total = afterLine - billDisc;
     return {
-      gross: gross,
+      gross,
       discount: discount + billDisc,
-      total: total,
+      total,
       items: cart.lines.reduce((a, l) => a + l.quantity, 0),
     };
   }, [cart.lines, cart.billDiscountPct]);
@@ -84,7 +90,51 @@ export default function Billing() {
         bill_discount_pct: cart.billDiscountPct,
         payment_mode: cart.paymentMode,
       };
-      const bill = await api<{ id: string }>("/bills", { method: "POST", body: payload });
+
+      if (!sync.online) {
+        // Offline path: queue and show the outbox confirmation.
+        const entry = await sync.queueBill(payload, {
+          itemsCount: totals.items,
+          total: totals.total,
+        });
+        cart.clear();
+        setShowCheckout(false);
+        setQuery("");
+        Alert.alert(
+          "Saved offline",
+          `Bill ${entry.localBillNo} (${rupee(totals.total)}) is queued and will be sent when you're back online.`,
+          [{ text: "OK" }],
+        );
+        return;
+      }
+
+      // Online path: send now.
+      const bill = await api<{ id: string; bill_no: string } & Record<string, any>>(
+        "/bills",
+        { method: "POST", body: payload },
+      );
+
+      // WhatsApp share if customer phone was entered.
+      if (cart.customerPhone) {
+        const shopRes = await api<{ name: string; phone?: string }>("/shop").catch(() => ({ name: "Pharma Counter" }));
+        const text = buildReceiptText(
+          {
+            bill_no: bill.bill_no,
+            grand_total: bill.grand_total ?? totals.total,
+            created_at: bill.created_at ?? new Date().toISOString(),
+            lines: bill.lines ?? cart.lines.map((l) => ({
+              medicine_name: l.medicine.name,
+              quantity: l.quantity,
+              line_total: l.quantity * l.medicine.mrp * (1 - l.discount_pct / 100),
+            })),
+            payment_mode: bill.payment_mode ?? cart.paymentMode,
+          },
+          shopRes,
+        );
+        // Non-blocking — don't await so the bill screens loads immediately.
+        sendOnWhatsApp(cart.customerPhone, text).catch(() => {});
+      }
+
       cart.clear();
       setShowCheckout(false);
       setQuery("");
@@ -105,17 +155,54 @@ export default function Billing() {
         {/* header */}
         <View style={styles.header}>
           <Text style={styles.title}>New Bill</Text>
-          {cart.lines.length > 0 && (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.md }}>
+            {/* Offline outbox badge */}
+            {(sync.pendingCount > 0 || !sync.online) && (
+              <TouchableOpacity
+                onPress={() => router.push("/outbox")}
+                style={[styles.offlinePill, !sync.online && { backgroundColor: COLORS.dangerBg }]}
+                testID="billing-outbox-badge"
+              >
+                <Feather
+                  name={sync.online ? "upload-cloud" : "wifi-off"}
+                  size={14}
+                  color={sync.online ? COLORS.warning : COLORS.danger}
+                />
+                {sync.pendingCount > 0 && (
+                  <Text style={[styles.offlinePillText, !sync.online && { color: COLORS.danger }]}>
+                    {sync.pendingCount}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+            {/* Scan button */}
             <TouchableOpacity
-              testID="billing-clear-cart"
-              onPress={() =>
-                confirmDestructive("Clear cart?", "This will remove all items.", "Clear", () => cart.clear())
-              }
+              testID="billing-scan-button"
+              onPress={() => router.push("/scan")}
+              style={styles.scanBtn}
             >
-              <Feather name="trash-2" size={20} color={COLORS.danger} />
+              <Feather name="camera" size={20} color={COLORS.white} />
             </TouchableOpacity>
-          )}
+            {cart.lines.length > 0 && (
+              <TouchableOpacity
+                testID="billing-clear-cart"
+                onPress={() =>
+                  confirmDestructive("Clear cart?", "This will remove all items.", "Clear", () => cart.clear())
+                }
+              >
+                <Feather name="trash-2" size={20} color={COLORS.danger} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
+
+        {/* offline search notice */}
+        {offline && (
+          <View style={styles.offlineBanner}>
+            <Feather name="wifi-off" size={13} color={COLORS.warning} />
+            <Text style={styles.offlineBannerText}>Showing cached results (offline)</Text>
+          </View>
+        )}
 
         {/* search */}
         <View style={styles.searchBox}>
@@ -310,12 +397,18 @@ export default function Billing() {
               <TextInput
                 testID="checkout-customer-phone"
                 style={styles.field}
-                placeholder="Phone"
+                placeholder="Phone (for WhatsApp receipt)"
                 placeholderTextColor={COLORS.textMuted}
                 keyboardType="phone-pad"
                 value={cart.customerPhone}
                 onChangeText={(v) => cart.setCustomer(cart.customerName, v)}
               />
+              {cart.customerPhone.length >= 10 && (
+                <View style={styles.waHint}>
+                  <Feather name="message-circle" size={13} color={COLORS.success} />
+                  <Text style={styles.waHintText}>Receipt will be sent on WhatsApp</Text>
+                </View>
+              )}
 
               <Text style={styles.fieldLabel}>Bill discount %</Text>
               <TextInput
@@ -354,6 +447,16 @@ export default function Billing() {
                 <View style={{ height: 1, backgroundColor: COLORS.border, marginVertical: 6 }} />
                 <Row label="GRAND TOTAL" value={rupee(totals.total)} big />
               </View>
+
+              {/* offline notice inside modal */}
+              {!sync.online && (
+                <View style={styles.offlineNotice}>
+                  <Feather name="wifi-off" size={15} color={COLORS.warning} />
+                  <Text style={styles.offlineNoticeText}>
+                    You're offline. Bill will be queued and sent when connection returns.
+                  </Text>
+                </View>
+              )}
             </ScrollView>
 
             <TouchableOpacity
@@ -367,8 +470,10 @@ export default function Billing() {
                 <ActivityIndicator color={COLORS.white} />
               ) : (
                 <>
-                  <Feather name="check" size={22} color={COLORS.white} />
-                  <Text style={styles.saveBillBtnText}>Save Bill · {rupee(totals.total)}</Text>
+                  <Feather name={sync.online ? "check" : "upload-cloud"} size={22} color={COLORS.white} />
+                  <Text style={styles.saveBillBtnText}>
+                    {sync.online ? `Save Bill · ${rupee(totals.total)}` : `Queue Offline · ${rupee(totals.total)}`}
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -406,6 +511,33 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.md,
   },
   title: { fontSize: 26, fontWeight: "800", color: COLORS.text, letterSpacing: -0.5 },
+  scanBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.text,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  offlinePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: COLORS.warningBg,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: RADIUS.pill,
+  },
+  offlinePillText: { fontSize: 12, fontWeight: "800", color: COLORS.warning },
+  offlineBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: COLORS.warningBg,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 7,
+  },
+  offlineBannerText: { fontSize: 12, color: COLORS.warning, fontWeight: "600" },
   searchBox: {
     marginHorizontal: SPACING.lg,
     marginTop: SPACING.md,
@@ -578,6 +710,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: COLORS.text,
   },
+  waHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: -4,
+  },
+  waHintText: { fontSize: 12, color: COLORS.success, fontWeight: "600" },
   payRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   payChip: {
     paddingHorizontal: SPACING.md,
@@ -596,6 +735,16 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
   },
+  offlineNotice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: COLORS.warningBg,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    marginTop: SPACING.sm,
+  },
+  offlineNoticeText: { flex: 1, fontSize: 13, color: COLORS.warning, fontWeight: "600" },
   saveBillBtn: {
     margin: SPACING.lg,
     minHeight: 60,

@@ -16,6 +16,7 @@ import { api } from "@/src/api";
 import { useAuth } from "@/src/auth";
 import { confirmDestructive } from "@/src/confirm";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { useSync } from "@/src/sync";
 
 type Shop = {
   name: string;
@@ -29,6 +30,7 @@ type Shop = {
 export default function Settings() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const sync = useSync();
   const [shop, setShop] = useState<Shop | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -152,6 +154,31 @@ export default function Settings() {
           <Feather name="chevron-right" size={20} color={COLORS.textMuted} />
         </TouchableOpacity>
 
+        {user?.role === "owner" && (
+          <TouchableOpacity
+            testID="settings-import-csv"
+            style={styles.linkRow}
+            onPress={() => router.push("/import-csv")}
+          >
+            <Feather name="upload" size={20} color={COLORS.primary} />
+            <Text style={styles.linkText}>Import medicines (CSV)</Text>
+            <Feather name="chevron-right" size={20} color={COLORS.textMuted} />
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          testID="settings-outbox"
+          style={styles.linkRow}
+          onPress={() => router.push("/outbox")}
+        >
+          <Feather name="upload-cloud" size={20} color={sync.pendingCount > 0 ? COLORS.warning : COLORS.primary} />
+          <Text style={styles.linkText}>
+            Offline queue
+            {sync.pendingCount > 0 ? ` · ${sync.pendingCount} pending` : ""}
+          </Text>
+          <Feather name="chevron-right" size={20} color={COLORS.textMuted} />
+        </TouchableOpacity>
+
         <TouchableOpacity
           testID="settings-logout"
           style={[styles.linkRow, { borderColor: COLORS.dangerBg }]}
@@ -165,7 +192,16 @@ export default function Settings() {
   );
 }
 
-function FieldRow({ label, value, onChange, readOnly, multiline, keyboardType, testID }: any) {
+type FieldRowProps = {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  readOnly?: boolean;
+  multiline?: boolean;
+  keyboardType?: import("react-native").KeyboardTypeOptions;
+  testID?: string;
+};
+function FieldRow({ label, value, onChange, readOnly, multiline, keyboardType, testID }: FieldRowProps) {
   return (
     <View style={{ gap: 6 }}>
       <Text style={styles.fieldLabel}>{label}</Text>

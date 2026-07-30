@@ -22,6 +22,28 @@ export async function clearToken(): Promise<void> {
   await storage.secureRemove(TOKEN_KEY);
 }
 
+/**
+ * Error thrown by {@link api}. `isNetwork` is true when the request never reached
+ * the server (device offline, DNS/timeout) — the offline outbox keys off this to
+ * decide whether to queue a write vs. surface a real server error. `status` holds
+ * the HTTP status for non-network failures.
+ */
+export class ApiError extends Error {
+  status?: number;
+  isNetwork: boolean;
+  constructor(message: string, opts: { status?: number; isNetwork?: boolean } = {}) {
+    super(message);
+    this.name = "ApiError";
+    this.status = opts.status;
+    this.isNetwork = !!opts.isNetwork;
+  }
+}
+
+/** True when the throw came from connectivity loss rather than a server response. */
+export function isNetworkError(e: unknown): boolean {
+  return e instanceof ApiError && e.isNetwork;
+}
+
 export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise<T> {
   const method = opts.method ?? "GET";
   const headers: Record<string, string> = {};
@@ -43,7 +65,13 @@ export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise
   }
 
   const url = `${BASE_URL}/api${path}`;
-  const res = await fetch(url, { method, headers, body });
+  let res: Response;
+  try {
+    res = await fetch(url, { method, headers, body });
+  } catch (e: any) {
+    // fetch rejects (TypeError) only when the request never completed — treat as offline.
+    throw new ApiError(e?.message || "Network request failed", { isNetwork: true });
+  }
   const raw = await res.text();
   let data: any = raw;
   try {
@@ -53,7 +81,7 @@ export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise
   }
   if (!res.ok) {
     const detail = typeof data === "object" ? data?.detail || JSON.stringify(data) : String(data);
-    throw new Error(detail || `HTTP ${res.status}`);
+    throw new ApiError(detail || `HTTP ${res.status}`, { status: res.status });
   }
   return data as T;
 }

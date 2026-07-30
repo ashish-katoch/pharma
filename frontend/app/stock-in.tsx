@@ -17,6 +17,7 @@ import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import { Medicine } from "@/src/cart";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { requestScan, cancelScan } from "@/src/scanBus";
 
 type Mode = "select" | "new-medicine" | "add-batch";
 
@@ -48,7 +49,16 @@ export default function StockIn() {
     mrp: "",
     reorder_level: "10",
     gst_rate: "12",
+    barcode: "",
   });
+
+  const scanBarcode = () => {
+    requestScan((code) => setNm((prev) => ({ ...prev, barcode: code })));
+    router.push({ pathname: "/scan", params: { mode: "return" } });
+  };
+
+  // Clean up if screen unmounts before scan completes.
+  useEffect(() => () => cancelScan(), []);
 
   useEffect(() => {
     (async () => {
@@ -109,6 +119,7 @@ export default function StockIn() {
           mrp: parseFloat(nm.mrp) || 0,
           reorder_level: parseInt(nm.reorder_level, 10) || 10,
           gst_rate: parseFloat(nm.gst_rate) || 12,
+          barcode: nm.barcode.trim(),
         },
       });
       setSelected(created);
@@ -198,6 +209,28 @@ export default function StockIn() {
                 <Field label="Reorder level" value={nm.reorder_level} onChange={(v) => setNm({ ...nm, reorder_level: v })} half keyboardType="numeric" testID="new-med-reorder" />
               </Row2>
               <Field label="GST %" value={nm.gst_rate} onChange={(v) => setNm({ ...nm, gst_rate: v })} keyboardType="decimal-pad" testID="new-med-gst" />
+              {/* barcode field with scan shortcut */}
+              <View style={{ gap: 6 }}>
+                <Text style={styles.fieldLabel}>Barcode (optional)</Text>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  <TextInput
+                    testID="new-med-barcode"
+                    style={[styles.field, { flex: 1 }]}
+                    value={nm.barcode}
+                    onChangeText={(v) => setNm({ ...nm, barcode: v })}
+                    placeholder="Scan or type EAN/UPC"
+                    placeholderTextColor={COLORS.textMuted}
+                    keyboardType="number-pad"
+                  />
+                  <TouchableOpacity
+                    testID="new-med-barcode-scan"
+                    style={styles.scanIconBtn}
+                    onPress={scanBarcode}
+                  >
+                    <Feather name="camera" size={20} color={COLORS.white} />
+                  </TouchableOpacity>
+                </View>
+              </View>
               <TouchableOpacity
                 testID="new-med-save"
                 style={styles.primaryBtn}
@@ -253,7 +286,16 @@ export default function StockIn() {
   );
 }
 
-function Field({ label, value, onChange, keyboardType, half, testID, placeholder }: any) {
+type FieldProps = {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  keyboardType?: import("react-native").KeyboardTypeOptions;
+  half?: boolean;
+  testID?: string;
+  placeholder?: string;
+};
+function Field({ label, value, onChange, keyboardType, half, testID, placeholder }: FieldProps) {
   return (
     <View style={{ gap: 6, flex: half ? 1 : undefined }}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -355,4 +397,11 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
   },
   primaryBtnText: { color: COLORS.white, fontSize: 16, fontWeight: "800" },
+  scanIconBtn: {
+    width: 52,
+    backgroundColor: COLORS.text,
+    borderRadius: RADIUS.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

@@ -16,6 +16,7 @@ import * as Sharing from "expo-sharing";
 import { api } from "@/src/api";
 import { confirmDestructive } from "@/src/confirm";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { buildReceiptText, sendOnWhatsApp } from "@/src/whatsapp";
 
 const rupee = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
@@ -152,6 +153,16 @@ export default function BillDetail() {
     }
   };
 
+  const shareWhatsApp = async () => {
+    if (!bill) return;
+    const phone = bill.customer_phone || "";
+    const text = buildReceiptText(bill, shop ?? { name: "Pharma Counter" });
+    const ok = await sendOnWhatsApp(phone, text);
+    if (!ok) {
+      Alert.alert("WhatsApp not found", "Install WhatsApp to use this feature.");
+    }
+  };
+
   const cancelBill = async () => {
     confirmDestructive("Cancel bill?", "Stock will be returned to batches.", "Cancel bill", async () => {
       setCancelling(true);
@@ -235,7 +246,15 @@ export default function BillDetail() {
           onPress={sharePdf}
         >
           <Feather name="share-2" size={18} color={COLORS.primary} />
-          <Text style={styles.secBtnText}>Share PDF</Text>
+          <Text style={styles.secBtnText}>PDF</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          testID="bill-whatsapp-btn"
+          style={styles.waBtn}
+          onPress={shareWhatsApp}
+        >
+          <Feather name="message-circle" size={18} color="#25D366" />
+          <Text style={styles.waBtnText}>WhatsApp</Text>
         </TouchableOpacity>
         {bill.status === "active" && (
           <TouchableOpacity
@@ -247,7 +266,7 @@ export default function BillDetail() {
             {cancelling ? <ActivityIndicator color={COLORS.white} /> : (
               <>
                 <Feather name="x-circle" size={18} color={COLORS.white} />
-                <Text style={styles.cancelBtnText}>Cancel Bill</Text>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
               </>
             )}
           </TouchableOpacity>
@@ -342,6 +361,19 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryLight,
   },
   secBtnText: { color: COLORS.primary, fontWeight: "800" },
+  waBtn: {
+    flex: 1,
+    minHeight: 52,
+    flexDirection: "row",
+    gap: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: "#25D366",
+    backgroundColor: "#F0FFF4",
+  },
+  waBtnText: { color: "#128C4B", fontWeight: "800" },
   cancelBtn: {
     flex: 1,
     minHeight: 52,

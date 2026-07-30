@@ -61,15 +61,26 @@ export default function Inventory() {
     <SafeAreaView style={styles.root} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.title}>Inventory</Text>
-        <TouchableOpacity
-          testID="inventory-add-button"
-          style={styles.addBtn}
-          onPress={() => router.push("/stock-in")}
-          activeOpacity={0.85}
-        >
-          <Feather name="plus" size={18} color={COLORS.white} />
-          <Text style={styles.addBtnText}>Stock In</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", gap: SPACING.sm }}>
+          <TouchableOpacity
+            testID="inventory-import-button"
+            style={[styles.addBtn, { backgroundColor: COLORS.text }]}
+            onPress={() => router.push("/import-csv")}
+            activeOpacity={0.85}
+          >
+            <Feather name="upload" size={16} color={COLORS.white} />
+            <Text style={styles.addBtnText}>Import</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID="inventory-add-button"
+            style={styles.addBtn}
+            onPress={() => router.push("/stock-in")}
+            activeOpacity={0.85}
+          >
+            <Feather name="plus" size={18} color={COLORS.white} />
+            <Text style={styles.addBtnText}>Stock In</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.searchBox}>
