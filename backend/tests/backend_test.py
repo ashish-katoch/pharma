@@ -244,3 +244,95 @@ def test_stats_today(owner_token):
     d = r.json()
     for k in ("sales_total", "bill_count", "low_stock_count", "expiring_30_count"):
         assert k in d
+
+
+# ─────────────────── Regression: C1 — change_password (field name bug) ─────── #
+def test_change_password_works_end_to_end(owner_token):
+    """C1 regression: change_password must read/write hashed_password, not password."""
+    # Change to a new password.
+    r = requests.post(
+        f"{API}/auth/change-password",
+        headers=h(owner_token),
+        json={"current_password": "Owner@123", "new_password": "Owner@456"},
+    )
+    assert r.status_code == 200, f"change_password failed: {r.text}"
+
+    # New password must work for login.
+    r2 = requests.post(f"{API}/auth/login", data={"username": "owner@pharma.com", "password": "Owner@456"})
+    assert r2.status_code == 200, "Login with new password failed — C1 bug may have recurred"
+
+    # Old password must no longer work.
+    r3 = requests.post(f"{API}/auth/login", data={"username": "owner@pharma.com", "password": "Owner@123"})
+    assert r3.status_code == 400, "Old password still works after change — C1 bug"
+
+    # Restore original password so other tests keep working.
+    new_token = r2.json()["access_token"]
+    r4 = requests.post(
+        f"{API}/auth/change-password",
+        headers=h(new_token),
+        json={"current_password": "Owner@456", "new_password": "Owner@123"},
+    )
+    assert r4.status_code == 200, f"Restore password failed: {r4.text}"
+
+
+# ─────────────────── Regression: C2 — atomic stock deduction ─────────────────── #
+def test_stock_deduction_is_exact(owner_token, bill_test_med):
+    """C2 regression: stock must drop by exactly the billed quantity — no race or set mismatch."""
+    med = bill_test_med
+    batches_before = requests.get(f"{API}/batches?medicine_id={med['id']}", headers=h(owner_token)).json()
+    earliest = min(batches_before, key=lambda b: b["expiry"])
+    qty_before = earliest["quantity"]
+
+    sell_qty = min(2, qty_before)  # never request more than available
+    payload = {
+        "lines": [{"medicine_id": med["id"], "quantity": sell_qty, "discount_pct": 0}],
+        "payment_mode": "cash",
+    }
+    bill_r = requests.post(f"{API}/bills", headers=h(owner_token), json=payload)
+    assert bill_r.status_code == 200, bill_r.text
+    bill_id = bill_r.json()["id"]
+
+    batches_after = requests.get(f"{API}/batches?medicine_id={med['id']}", headers=h(owner_token)).json()
+    batch_after = next(b for b in batches_after if b["id"] == earliest["id"])
+    assert batch_after["quantity"] == qty_before - sell_qty, (
+        f"Stock mismatch: expected {qty_before - sell_qty}, got {batch_after['quantity']} — C2 regression"
+    )
+
+    # Clean up: cancel the bill to restore stock.
+    requests.post(f"{API}/bills/{bill_id}/cancel", headers=h(owner_token))
+
+
+# ─────────────────── Regression: C3 — analytics field names ──────────────────── #
+def test_analytics_returns_real_data(owner_token):
+    """C3 regression: analytics must use medicine_name/line_total/total_discount, not name/total/discount."""
+    # Create a bill so there's something to aggregate.
+    meds = requests.get(f"{API}/medicines", headers=h(owner_token)).json()
+    med = meds[0]
+    payload = {
+        "lines": [{"medicine_id": med["id"], "quantity": 1, "discount_pct": 0}],
+        "payment_mode": "cash",
+    }
+    bill_r = requests.post(f"{API}/bills", headers=h(owner_token), json=payload)
+    assert bill_r.status_code == 200, bill_r.text
+    bill_id = bill_r.json()["id"]
+
+    from datetime import datetime, timezone
+    month = datetime.now(timezone.utc).strftime("%Y-%m")
+
+    sales = requests.get(f"{API}/analytics/sales?month={month}", headers=h(owner_token)).json()
+    assert sales["bill_count"] >= 1, "Sales analytics returned 0 bills — C3 regression likely"
+    assert sales["total_revenue"] > 0, "Sales analytics returned zero revenue — C3 regression (wrong field name)"
+    assert len(sales["top_by_qty"]) >= 1
+    top = sales["top_by_qty"][0]
+    assert top["name"] not in ("Unknown", ""), f"Medicine name is '{top['name']}' — C3 medicine_name field bug"
+    assert top["qty"] > 0 and top["revenue"] > 0, "Top medicine has zero qty/revenue — C3 line_total field bug"
+
+    staff = requests.get(f"{API}/analytics/staff?month={month}", headers=h(owner_token)).json()
+    assert staff["total_bills"] >= 1
+    assert any(s["revenue"] > 0 for s in staff["staff"]), "Staff analytics all zero revenue — C3 regression"
+
+    pnl = requests.get(f"{API}/analytics/pnl?month={month}", headers=h(owner_token)).json()
+    assert pnl["revenue"] > 0, "PnL revenue is zero — C3 grand_total field bug"
+
+    # Clean up.
+    requests.post(f"{API}/bills/{bill_id}/cancel", headers=h(owner_token))
