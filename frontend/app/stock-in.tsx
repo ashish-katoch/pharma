@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
@@ -15,9 +14,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
+import { alertMsg, alertNav } from "@/src/dialog";
 import { Medicine } from "@/src/cart";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 import { requestScan, cancelScan } from "@/src/scanBus";
+import { DatePicker } from "@/src/components/DatePicker";
 
 type Mode = "select" | "new-medicine" | "add-batch";
 
@@ -37,6 +38,14 @@ export default function StockIn() {
   const [mrp, setMrp] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
 
+  const UOM_OPTIONS = [
+    { value: "pcs", label: "Pcs" },
+    { value: "kg",  label: "Kg" },
+    { value: "ltr", label: "Ltr" },
+    { value: "dz",  label: "Dozen" },
+  ] as const;
+  type Uom = "pcs" | "kg" | "ltr" | "dz";
+
   // new medicine form
   const [nm, setNm] = useState({
     name: "",
@@ -50,6 +59,8 @@ export default function StockIn() {
     reorder_level: "10",
     gst_rate: "12",
     barcode: "",
+    location: "",
+    uom: "pcs" as Uom,
   });
 
   const scanBarcode = () => {
@@ -79,12 +90,12 @@ export default function StockIn() {
 
   const saveBatch = async () => {
     if (!selected) return;
-    if (!batchNo.trim()) return Alert.alert("Batch #", "Enter batch number");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(expiry)) return Alert.alert("Expiry", "Use YYYY-MM-DD");
-    const q1 = parseInt(qty, 10);
-    if (!q1 || q1 <= 0) return Alert.alert("Quantity", "Enter a positive quantity");
+    if (!batchNo.trim()) { alertMsg("Batch #", "Enter batch number"); return; }
+    if (!expiry) { alertMsg("Expiry", "Select an expiry date"); return; }
+    const q1 = parseFloat(qty);
+    if (!q1 || q1 <= 0) { alertMsg("Quantity", "Enter a positive quantity"); return; }
     const m1 = parseFloat(mrp);
-    if (!m1 || m1 <= 0) return Alert.alert("MRP", "Enter MRP");
+    if (!m1 || m1 <= 0) { alertMsg("MRP", "Enter MRP"); return; }
     setSaving(true);
     try {
       await api("/batches", {
@@ -98,18 +109,16 @@ export default function StockIn() {
           purchase_price: parseFloat(purchasePrice) || 0,
         },
       });
-      Alert.alert("Stock added", `${q1} units of ${selected.name} added.`, [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      alertNav("Stock added", `${q1} ${selected.uom ?? "pcs"} of ${selected.name} added.`, () => router.back());
     } catch (e: any) {
-      Alert.alert("Failed", e?.message || "");
+      alertMsg("Failed", e?.message || "");
     } finally {
       setSaving(false);
     }
   };
 
   const saveNewMedicine = async () => {
-    if (!nm.name.trim()) return Alert.alert("Name", "Enter medicine name");
+    if (!nm.name.trim()) { alertMsg("Name", "Enter medicine name"); return; }
     setSaving(true);
     try {
       const created = await api<Medicine>("/medicines", {
@@ -120,13 +129,14 @@ export default function StockIn() {
           reorder_level: parseInt(nm.reorder_level, 10) || 10,
           gst_rate: parseFloat(nm.gst_rate) || 12,
           barcode: nm.barcode.trim(),
+          uom: nm.uom,
         },
       });
       setSelected(created);
       setMrp(String(created.mrp));
       setMode("add-batch");
     } catch (e: any) {
-      Alert.alert("Failed", e?.message || "");
+      alertMsg("Failed", e?.message || "");
     } finally {
       setSaving(false);
     }
@@ -147,12 +157,29 @@ export default function StockIn() {
           {mode === "select" && (
             <>
               <Text style={styles.stepLabel}>STEP 1 · Pick a medicine</Text>
+
+              {/* Scan supplier invoice shortcut */}
+              <TouchableOpacity
+                testID="stock-in-scan-invoice"
+                style={styles.scanInvoiceBtn}
+                onPress={() => router.push("/scan-invoice" as any)}
+              >
+                <View style={styles.scanInvoiceIcon}>
+                  <Feather name="file-text" size={22} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.scanInvoiceTitle}>Scan Supplier Invoice</Text>
+                  <Text style={styles.scanInvoiceSub}>Import stock from PDF or photo</Text>
+                </View>
+                <Feather name="chevron-right" size={20} color={COLORS.primary} />
+              </TouchableOpacity>
+
               <View style={styles.searchBox}>
                 <Feather name="search" size={18} color={COLORS.textMuted} />
                 <TextInput
                   testID="stock-in-search"
                   style={styles.searchInput}
-                  placeholder="Search or add new"
+                  placeholder="Or search medicine manually"
                   placeholderTextColor={COLORS.textMuted}
                   value={q}
                   onChangeText={setQ}
@@ -209,6 +236,24 @@ export default function StockIn() {
                 <Field label="Reorder level" value={nm.reorder_level} onChange={(v) => setNm({ ...nm, reorder_level: v })} half keyboardType="numeric" testID="new-med-reorder" />
               </Row2>
               <Field label="GST %" value={nm.gst_rate} onChange={(v) => setNm({ ...nm, gst_rate: v })} keyboardType="decimal-pad" testID="new-med-gst" />
+              {/* Unit of measure */}
+              <View style={{ gap: 6 }}>
+                <Text style={styles.fieldLabel}>UNIT OF MEASURE</Text>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  {UOM_OPTIONS.map((opt) => (
+                    <TouchableOpacity
+                      key={opt.value}
+                      testID={`new-med-uom-${opt.value}`}
+                      onPress={() => setNm({ ...nm, uom: opt.value })}
+                      style={[styles.uomChip, nm.uom === opt.value && styles.uomChipActive]}
+                    >
+                      <Text style={[styles.uomChipText, nm.uom === opt.value && styles.uomChipTextActive]}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
               {/* barcode field with scan shortcut */}
               <View style={{ gap: 6 }}>
                 <Text style={styles.fieldLabel}>Barcode (optional)</Text>
@@ -231,6 +276,7 @@ export default function StockIn() {
                   </TouchableOpacity>
                 </View>
               </View>
+              <Field label="Location (Block-Row-Shelf)" value={nm.location} onChange={(v) => setNm({ ...nm, location: v })} testID="new-med-location" placeholder="e.g. A-1-B" />
               <TouchableOpacity
                 testID="new-med-save"
                 style={styles.primaryBtn}
@@ -258,11 +304,18 @@ export default function StockIn() {
                 </View>
               </View>
               <Text style={styles.stepLabel}>NEW BATCH</Text>
-              <Field label="Batch number" value={batchNo} onChange={setBatchNo} testID="batch-no" />
-              <Field label="Expiry (YYYY-MM-DD)" value={expiry} onChange={setExpiry} placeholder="2027-12-31" testID="batch-expiry" />
+              <Field label="Batch number *" value={batchNo} onChange={setBatchNo} testID="batch-no" />
+              <DatePicker label="EXPIRY *" value={expiry} onChange={setExpiry} testID="batch-expiry" minimumDate={new Date().toISOString().slice(0, 10)} />
               <Row2>
-                <Field label="Quantity" value={qty} onChange={setQty} half keyboardType="numeric" testID="batch-qty" />
-                <Field label="MRP ₹" value={mrp} onChange={setMrp} half keyboardType="decimal-pad" testID="batch-mrp" />
+                <Field
+                  label={`QUANTITY * (${selected.uom ?? "pcs"})`}
+                  value={qty}
+                  onChange={setQty}
+                  half
+                  keyboardType="decimal-pad"
+                  testID="batch-qty"
+                />
+                <Field label="MRP ₹ *" value={mrp} onChange={setMrp} half keyboardType="decimal-pad" testID="batch-mrp" />
               </Row2>
               <Field label="Purchase price ₹ (optional)" value={purchasePrice} onChange={setPurchasePrice} keyboardType="decimal-pad" testID="batch-purchase" />
               <TouchableOpacity
@@ -404,4 +457,40 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  uomChip: {
+    flex: 1,
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.white,
+  },
+  uomChipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  uomChipText: { fontSize: 13, fontWeight: "700", color: COLORS.textSecondary },
+  uomChipTextActive: { color: COLORS.white },
+  scanInvoiceBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.md,
+    padding: SPACING.md,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+  },
+  scanInvoiceIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scanInvoiceTitle: { fontSize: 15, fontWeight: "800", color: COLORS.text },
+  scanInvoiceSub: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
 });

@@ -6,11 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
+import { alertMsg } from "@/src/dialog";
+import { useIsOwner } from "@/src/auth";
 import { COLORS, RADIUS, SPACING, expiryTone } from "@/src/theme";
 
 const rupee = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -37,29 +43,78 @@ type Medicine = {
   mrp: number;
   total_stock: number;
   reorder_level: number;
+  location?: string;
+};
+
+type PriceHistory = {
+  id: string;
+  old_mrp: number;
+  new_mrp: number;
+  changed_by: string;
+  changed_at: string;
 };
 
 export default function MedicineDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const isOwner = useIsOwner();
   const [med, setMed] = useState<Medicine | null>(null);
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [priceHistory, setPriceHistory] = useState<PriceHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Medicine>>({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const [m, b] = await Promise.all([
+        const [m, b, ph] = await Promise.all([
           api<Medicine>(`/medicines/${id}`),
           api<Batch[]>(`/batches?medicine_id=${id}`),
+          api<PriceHistory[]>(`/medicines/${id}/price-history`).catch(() => []),
         ]);
         setMed(m);
         setBatches(b);
+        setPriceHistory(ph);
       } finally {
         setLoading(false);
       }
     })();
   }, [id]);
+
+  const openEdit = () => {
+    if (!med) return;
+    setEditForm({
+      name: med.name, brand: med.brand, generic: med.generic,
+      strength: med.strength, pack: med.pack, hsn: med.hsn,
+      schedule: med.schedule, gst_rate: med.gst_rate,
+      mrp: med.mrp, reorder_level: med.reorder_level, location: med.location,
+    });
+    setEditOpen(true);
+  };
+
+  const saveMedicine = async () => {
+    if (!editForm.name?.trim()) { alertMsg("Name", "Medicine name is required"); return; }
+    setSaving(true);
+    try {
+      const updated = await api<Medicine>(`/medicines/${id}`, {
+        method: "PUT",
+        body: {
+          ...editForm,
+          mrp: parseFloat(String(editForm.mrp)) || 0,
+          reorder_level: parseInt(String(editForm.reorder_level), 10) || 10,
+          gst_rate: parseFloat(String(editForm.gst_rate)) || 12,
+        },
+      });
+      setMed(updated);
+      setEditOpen(false);
+    } catch (e: any) {
+      alertMsg("Failed", e?.message || "Could not save");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading || !med) {
     return (
@@ -76,7 +131,11 @@ export default function MedicineDetail() {
           <Feather name="arrow-left" size={22} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{med.name}</Text>
-        <View style={{ width: 22 }} />
+        {isOwner ? (
+          <TouchableOpacity onPress={openEdit} testID="medicine-edit-btn">
+            <Feather name="edit-2" size={20} color={COLORS.primary} />
+          </TouchableOpacity>
+        ) : <View style={{ width: 22 }} />}
       </View>
 
       <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: SPACING.lg, paddingBottom: 120 }}>
@@ -88,6 +147,12 @@ export default function MedicineDetail() {
             {med.hsn ? <Text style={styles.schedTag}>HSN {med.hsn}</Text> : null}
             {med.gst_rate ? <Text style={styles.schedTag}>GST {med.gst_rate}%</Text> : null}
           </View>
+          {med.location ? (
+            <View style={styles.locationRow}>
+              <Feather name="map-pin" size={12} color={COLORS.textMuted} />
+              <Text style={styles.locationText}>{med.location}</Text>
+            </View>
+          ) : null}
           <Text style={styles.heroPrice}>{rupee(med.mrp)}</Text>
         </View>
 
@@ -138,7 +203,79 @@ export default function MedicineDetail() {
             );
           })
         )}
+
+        {priceHistory.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>MRP History</Text>
+            {priceHistory.map((ph, idx) => (
+              <View key={ph.id ?? idx} style={styles.phCard}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.phChange}>
+                    {rupee(ph.old_mrp)} → {rupee(ph.new_mrp)}
+                  </Text>
+                  <Text style={styles.phMeta}>{ph.changed_at?.slice(0, 10)} · {ph.changed_by}</Text>
+                </View>
+                <Text style={[
+                  styles.phDelta,
+                  { color: ph.new_mrp > ph.old_mrp ? COLORS.danger : "#10b981" },
+                ]}>
+                  {ph.new_mrp > ph.old_mrp ? "+" : ""}
+                  {rupee(ph.new_mrp - ph.old_mrp)}
+                </Text>
+              </View>
+            ))}
+          </>
+        )}
       </ScrollView>
+
+      {/* ── Edit Medicine Modal ── */}
+      <Modal visible={editOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setEditOpen(false)}>
+        <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setEditOpen(false)}>
+              <Feather name="x" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Edit Medicine</Text>
+            <TouchableOpacity onPress={saveMedicine} disabled={saving} testID="medicine-save-btn">
+              {saving ? <ActivityIndicator color={COLORS.primary} /> : (
+                <Text style={{ color: COLORS.primary, fontWeight: "800", fontSize: 15 }}>Save</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: SPACING.md, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+              {(
+                [
+                  { key: "name", label: "Name *" },
+                  { key: "brand", label: "Brand" },
+                  { key: "generic", label: "Generic Name" },
+                  { key: "strength", label: "Strength" },
+                  { key: "pack", label: "Pack" },
+                  { key: "hsn", label: "HSN Code" },
+                  { key: "schedule", label: "Schedule (OTC / H / H1)" },
+                  { key: "gst_rate", label: "GST %", numeric: true },
+                  { key: "mrp", label: "MRP ₹", numeric: true },
+                  { key: "reorder_level", label: "Reorder Level", numeric: true },
+                  { key: "location", label: "Location (Block-Row-Shelf)" },
+                ] as { key: keyof Medicine; label: string; numeric?: boolean }[]
+              ).map(({ key, label, numeric }) => (
+                <View key={key} style={{ gap: 4 }}>
+                  <Text style={styles.editFieldLabel}>{label}</Text>
+                  <TextInput
+                    style={styles.editInput}
+                    value={editForm[key] != null ? String(editForm[key]) : ""}
+                    onChangeText={(v) => setEditForm((p) => ({ ...p, [key]: numeric ? v : v }))}
+                    keyboardType={numeric ? "decimal-pad" : "default"}
+                    placeholder={label}
+                    placeholderTextColor={COLORS.textMuted}
+                    testID={`medicine-edit-${key}`}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -155,6 +292,27 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   headerTitle: { fontSize: 16, fontWeight: "800", color: COLORS.text, flex: 1, marginHorizontal: 12 },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.white,
+  },
+  editFieldLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 1, color: COLORS.textSecondary },
+  editInput: {
+    height: 48,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.md,
+    fontSize: 15,
+    color: COLORS.text,
+    backgroundColor: COLORS.white,
+  },
   hero: {
     padding: SPACING.lg,
     backgroundColor: COLORS.white,
@@ -166,6 +324,8 @@ const styles = StyleSheet.create({
   heroName: { fontSize: 22, fontWeight: "800", color: COLORS.text, letterSpacing: -0.4 },
   heroMeta: { fontSize: 13, color: COLORS.textSecondary },
   heroPrice: { fontSize: 26, fontWeight: "900", color: COLORS.primary, marginTop: 8 },
+  locationRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 },
+  locationText: { fontSize: 12, color: COLORS.textMuted, fontWeight: "600" },
   tagRow: { flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 4 },
   schedTag: {
     fontSize: 11,
@@ -223,4 +383,17 @@ const styles = StyleSheet.create({
   expiryBadgeSub: { fontSize: 10, fontWeight: "700", marginTop: 2 },
   empty: { alignItems: "center", padding: SPACING.xxl, gap: 8 },
   emptyText: { color: COLORS.textMuted, fontSize: 14 },
+  phCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: SPACING.md,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 6,
+  },
+  phChange: { fontSize: 14, fontWeight: "700", color: COLORS.text },
+  phMeta: { fontSize: 11, color: COLORS.textMuted, marginTop: 2 },
+  phDelta: { fontSize: 14, fontWeight: "800", fontVariant: ["tabular-nums"] },
 });

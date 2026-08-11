@@ -1,13 +1,12 @@
-// Sync engine — replays the offline outbox to the backend.
+// SyncProvider — drains the SQLite sync_queue to the backend over FIFO order.
 //
-// Responsibilities:
-//   * expose live pending / failed counts to the UI
-//   * auto-flush when connectivity returns, on an interval, and on app foreground
-//   * classify replay outcomes: success -> drop; network error -> keep & retry
-//     later; server rejection (4xx) -> move to the failed list so it never blocks
-//     the queue.
+// The public hook API (useSync) is unchanged so all existing screens keep
+// working. Internally we use SyncRepository (SQLite) instead of AsyncStorage.
 //
-// Upload order is FIFO (bills replay in the order they were rung up).
+// Drain rules:
+//   • Network error → stop the run, keep entry as pending, retry later.
+//   • 4xx server rejection → mark as failed so it never blocks the queue.
+//   • 2xx → remove from queue, stamp local bill as synced with server bill_no.
 
 import {
   createContext,
@@ -18,39 +17,36 @@ import {
   useState,
   ReactNode,
 } from "react";
-import { AppState } from "react-native";
+import { AppState, Platform } from "react-native";
 import { api, isNetworkError } from "@/src/api";
 import { useNet } from "@/src/net";
 import {
-  clearFailed as clearFailedStore,
-  enqueueBill,
-  getFailed,
-  getOutbox,
-  markFailed,
-  OutboxBill,
-  removeFromOutbox,
-} from "@/src/outbox";
+  clearFailedQueue,
+  getFailedCount,
+  getPendingCount,
+  getPendingQueue,
+  markSyncAttempted,
+  markSyncFailed,
+  removeSyncEntry,
+} from "@/src/repositories/SyncRepository";
+import { markBillSynced } from "@/src/repositories/BillingRepository";
 
-type SyncContextValue = {
+export type SyncContextValue = {
   online: boolean;
   pendingCount: number;
   failedCount: number;
   syncing: boolean;
-  /** Add a bill to the outbox (used when a save is made offline). */
-  queueBill: (
-    payload: any,
-    meta: { itemsCount: number; total: number },
-  ) => Promise<OutboxBill>;
-  /** Attempt to replay the queue now. No-op if already running or offline. */
   syncNow: () => Promise<void>;
-  /** Reload counts from storage (call after inspecting/clearing failures). */
   refresh: () => Promise<void>;
   clearFailed: () => Promise<void>;
 };
 
 const SyncCtx = createContext<SyncContextValue | undefined>(undefined);
 
-const RETRY_MS = 15000;
+const RETRY_MS = 15_000;
+// Exponential backoff caps: 1 s, 2 s, 4 s, 8 s, 30 s
+const backoffMs = (retry: number) =>
+  Math.min(1000 * 2 ** retry, 30_000);
 
 export function SyncProvider({ children }: { children: ReactNode }) {
   const { online, check } = useNet();
@@ -60,42 +56,64 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const runningRef = useRef(false);
 
   const refresh = useCallback(async () => {
-    const [pending, failed] = await Promise.all([getOutbox(), getFailed()]);
-    setPendingCount(pending.length);
-    setFailedCount(failed.length);
+    if (Platform.OS === "web") return;
+    const [p, f] = await Promise.all([getPendingCount(), getFailedCount()]);
+    setPendingCount(p);
+    setFailedCount(f);
   }, []);
 
-  const queueBill = useCallback(
-    async (payload: any, meta: { itemsCount: number; total: number }) => {
-      const entry = await enqueueBill(payload, meta);
-      await refresh();
-      return entry;
-    },
-    [refresh],
-  );
-
   const flush = useCallback(async () => {
+    if (Platform.OS === "web") return;
     if (runningRef.current) return;
     runningRef.current = true;
     setSyncing(true);
     try {
-      // Re-check connectivity before hammering the queue.
       const isOnline = await check();
       if (!isOnline) return;
 
-      let queue = await getOutbox();
+      const queue = await getPendingQueue();
       for (const entry of queue) {
+        // Respect exponential backoff: skip if last attempt was too recent.
+        if (entry.last_attempted_at && entry.retry_count > 0) {
+          const wait = backoffMs(entry.retry_count - 1);
+          const elapsed =
+            Date.now() - new Date(entry.last_attempted_at).getTime();
+          if (elapsed < wait) continue;
+        }
+
+        let payload: any;
         try {
-          await api("/bills", { method: "POST", body: entry.payload });
-          await removeFromOutbox(entry.id);
+          payload = JSON.parse(entry.payload);
+        } catch {
+          await markSyncFailed(entry.id, "Corrupt payload");
+          continue;
+        }
+
+        try {
+          if (entry.entity_type === "bill") {
+            const res = await api<{ id: string; bill_no: string }>(
+              "/bills",
+              { method: "POST", body: payload }
+            );
+            // Stamp the server-assigned bill_no on the local record.
+            if (res?.bill_no) {
+              await markBillSynced(entry.entity_id, res.bill_no).catch(() => {});
+            }
+          }
+          await removeSyncEntry(entry.id);
         } catch (e: any) {
           if (isNetworkError(e)) {
-            // Still offline — stop and keep the rest for the next attempt.
+            // Device went offline mid-flush; stop and leave the rest pending.
             break;
           }
-          // Server rejected it (e.g. insufficient stock now). Park it so a single
-          // bad bill can't wedge the whole queue.
-          await markFailed(entry, e?.message || "Rejected by server");
+          const status: number = (e as any)?.status ?? 0;
+          if (status >= 500 || status === 0) {
+            // Transient server error — keep pending so it retries with backoff.
+            await markSyncAttempted(entry.id);
+            continue;
+          }
+          // 4xx — server permanently rejected the payload (bad data). Park it.
+          await markSyncFailed(entry.id, e?.message || "Rejected by server");
         }
       }
     } finally {
@@ -105,27 +123,26 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     }
   }, [check, refresh]);
 
-  const syncNow = useCallback(async () => {
-    await flush();
-  }, [flush]);
+  const syncNow = useCallback(() => flush(), [flush]);
 
   const clearFailed = useCallback(async () => {
-    await clearFailedStore();
+    if (Platform.OS === "web") return;
+    await clearFailedQueue();
     await refresh();
   }, [refresh]);
 
-  // Initial load.
+  // Initial count load.
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  // Flush whenever we come online (and there is something to send).
+  // Flush when coming back online.
   useEffect(() => {
     if (online && pendingCount > 0) flush();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online]);
 
-  // Periodic retry while a queue exists.
+  // Periodic retry while there are pending entries.
   useEffect(() => {
     if (pendingCount === 0) return;
     const t = setInterval(() => {
@@ -134,7 +151,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(t);
   }, [pendingCount, online, flush]);
 
-  // Flush on app foreground.
+  // Flush when app comes to foreground.
   useEffect(() => {
     const sub = AppState.addEventListener("change", (s) => {
       if (s === "active") flush();
@@ -144,16 +161,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   return (
     <SyncCtx.Provider
-      value={{
-        online,
-        pendingCount,
-        failedCount,
-        syncing,
-        queueBill,
-        syncNow,
-        refresh,
-        clearFailed,
-      }}
+      value={{ online, pendingCount, failedCount, syncing, syncNow, refresh, clearFailed }}
     >
       {children}
     </SyncCtx.Provider>

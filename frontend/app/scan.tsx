@@ -38,14 +38,14 @@ const SCAN_TYPES = [
 // continuously while a barcode is in frame).
 const COOLDOWN_MS = 1800;
 
-type Mode = "cart" | "return";
+type Mode = "cart" | "return" | "bill";
 
 type Toast = { text: string; tone: "success" | "warning" | "danger" } | null;
 
 export default function Scan() {
   const router = useRouter();
   const params = useLocalSearchParams<{ mode?: Mode }>();
-  const mode: Mode = params.mode === "return" ? "return" : "cart";
+  const mode: Mode = params.mode === "return" ? "return" : params.mode === "bill" ? "bill" : "cart";
   const cart = useCart();
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -73,6 +73,24 @@ export default function Scan() {
       if (code === lastCode.current && nowMs - lastAt.current < COOLDOWN_MS) return;
       lastCode.current = code;
       lastAt.current = nowMs;
+
+      // Universal: pharma://bill/<bill_no> QR code → open bill detail
+      if (code.startsWith("pharma://bill/")) {
+        const billNo = code.replace("pharma://bill/", "").trim();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+        // Look up bill by bill_no to get its ID
+        try {
+          const { api } = await import("@/src/api");
+          const bills = await api<any[]>(`/bills?invoice_no=${encodeURIComponent(billNo)}`);
+          const bill = bills.find((b: any) => b.bill_no === billNo) ?? bills[0];
+          if (bill) {
+            router.replace(`/bill/${bill.id}` as any);
+            return;
+          }
+        } catch {}
+        flashToast({ text: `Bill ${billNo} not found`, tone: "warning" });
+        return;
+      }
 
       if (mode === "return") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -167,7 +185,7 @@ export default function Scan() {
             <Feather name="x" size={24} color={COLORS.white} />
           </TouchableOpacity>
           <Text style={styles.topTitle}>
-            {mode === "return" ? "Scan barcode" : "Scan to add"}
+            {mode === "return" ? "Scan barcode" : mode === "bill" ? "Scan bill QR" : "Scan to add"}
           </Text>
           <View style={{ width: 44 }} />
         </View>

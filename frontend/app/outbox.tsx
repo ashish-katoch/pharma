@@ -6,26 +6,34 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
+import { Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { confirmDestructive } from "@/src/confirm";
 import { useSync } from "@/src/sync";
-import { getFailed, getOutbox, OutboxBill, FailedBill } from "@/src/outbox";
+import {
+  getPendingQueue,
+  getFailedQueue,
+  resetSyncEntry,
+} from "@/src/repositories/SyncRepository";
+import { voidBillLocal } from "@/src/repositories/BillingRepository";
+import { SyncQueueEntry } from "@/src/repositories/types";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
-const rupee = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+const rupee = (n: number) =>
+  `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
 export default function OutboxScreen() {
   const router = useRouter();
   const sync = useSync();
-  const [pending, setPending] = useState<OutboxBill[]>([]);
-  const [failed, setFailed] = useState<FailedBill[]>([]);
+  const [pending, setPending] = useState<SyncQueueEntry[]>([]);
+  const [failed, setFailed] = useState<SyncQueueEntry[]>([]);
 
   const load = useCallback(async () => {
-    const [p, f] = await Promise.all([getOutbox(), getFailed()]);
+    if (Platform.OS === "web") return;
+    const [p, f] = await Promise.all([getPendingQueue(), getFailedQueue()]);
     setPending(p);
     setFailed(f);
   }, []);
@@ -35,18 +43,39 @@ export default function OutboxScreen() {
   const doSync = async () => {
     await sync.syncNow();
     await load();
+    await sync.refresh();
   };
 
   const clearFailed = () => {
     if (failed.length === 0) return;
     confirmDestructive(
       "Clear failed bills?",
-      "These bills could not be sent. Stock was never deducted. You should recreate them manually.",
+      "These bills were rejected by the server. Stock was already deducted locally — review your inventory.",
       "Clear",
       async () => {
         await sync.clearFailed();
         await load();
-      },
+      }
+    );
+  };
+
+  const retryEntry = async (entry: SyncQueueEntry) => {
+    await resetSyncEntry(entry.id);
+    await load();
+    await sync.refresh();
+    await sync.syncNow();
+  };
+
+  const voidEntry = (entry: SyncQueueEntry) => {
+    confirmDestructive(
+      "Void this bill?",
+      "The bill will be cancelled and stock restored. This cannot be undone.",
+      "Void Bill",
+      async () => {
+        await voidBillLocal(entry.entity_id);
+        await load();
+        await sync.refresh();
+      }
     );
   };
 
@@ -65,48 +94,66 @@ export default function OutboxScreen() {
           {sync.syncing ? (
             <ActivityIndicator color={COLORS.primary} />
           ) : (
-            <Feather name="refresh-cw" size={22} color={pending.length > 0 ? COLORS.primary : COLORS.textMuted} />
+            <Feather
+              name="refresh-cw"
+              size={22}
+              color={pending.length > 0 ? COLORS.primary : COLORS.textMuted}
+            />
           )}
         </TouchableOpacity>
       </View>
 
-      {/* status banner */}
-      <View style={[styles.banner, { backgroundColor: sync.online ? COLORS.successBg : COLORS.dangerBg }]}>
+      <View
+        style={[
+          styles.banner,
+          { backgroundColor: sync.online ? COLORS.successBg : COLORS.dangerBg },
+        ]}
+      >
         <Feather
           name={sync.online ? "wifi" : "wifi-off"}
           size={16}
           color={sync.online ? COLORS.success : COLORS.danger}
         />
-        <Text style={[styles.bannerText, { color: sync.online ? COLORS.success : COLORS.danger }]}>
-          {sync.online ? "Online — bills will sync automatically" : "Offline — bills queued locally"}
+        <Text
+          style={[
+            styles.bannerText,
+            { color: sync.online ? COLORS.success : COLORS.danger },
+          ]}
+        >
+          {sync.online
+            ? "Online — bills will sync automatically"
+            : "Offline — bills queued locally"}
         </Text>
       </View>
 
       <FlatList
         data={[
-          ...(pending.length ? [{ section: "WAITING TO SEND" as const }] : []),
+          ...(pending.length ? [{ _section: "WAITING TO SEND" }] : []),
           ...pending,
-          ...(failed.length ? [{ section: "FAILED (NOT SENT)" as const }] : []),
+          ...(failed.length ? [{ _section: "FAILED (SERVER REJECTED)" }] : []),
           ...failed,
         ]}
-        keyExtractor={(item: any) => item.section ?? item.id}
+        keyExtractor={(item: any) => item._section ?? item.id}
         contentContainerStyle={{ padding: SPACING.lg, gap: 8, paddingBottom: 80 }}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Feather name="inbox" size={36} color={COLORS.textMuted} />
             <Text style={styles.emptyTitle}>Queue is empty</Text>
             <Text style={styles.emptyBody}>
-              All bills have been sent to the server. Bills made while offline will appear here.
+              All bills are synced. Bills made while offline appear here until connectivity returns.
             </Text>
           </View>
         }
         renderItem={({ item }: any) => {
-          if (item.section) {
+          if (item._section) {
             return (
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: SPACING.md, marginBottom: 4 }}>
-                <Text style={styles.sectionLabel}>{item.section}</Text>
-                {item.section === "FAILED (NOT SENT)" && (
-                  <TouchableOpacity onPress={clearFailed} testID="outbox-clear-failed">
+              <View style={styles.sectionRow}>
+                <Text style={styles.sectionLabel}>{item._section}</Text>
+                {item._section.startsWith("FAILED") && (
+                  <TouchableOpacity
+                    onPress={clearFailed}
+                    testID="outbox-clear-failed"
+                  >
                     <Text style={styles.clearLink}>Clear all</Text>
                   </TouchableOpacity>
                 )}
@@ -114,30 +161,68 @@ export default function OutboxScreen() {
             );
           }
 
-          const isFailed = "reason" in item;
+          const entry = item as SyncQueueEntry;
+          const isFailed = entry.status === "failed";
+          let payload: any = {};
+          try { payload = JSON.parse(entry.payload); } catch {}
+
           return (
-            <View style={[styles.card, isFailed && styles.cardFailed]} testID="outbox-item">
+            <View
+              style={[styles.card, isFailed && styles.cardFailed]}
+              testID="outbox-item"
+            >
               <View style={styles.cardTop}>
-                <View>
-                  <Text style={styles.localNo}>{item.localBillNo}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.localNo}>
+                    {entry.entity_type.toUpperCase()} · {entry.entity_id.slice(-8).toUpperCase()}
+                  </Text>
                   <Text style={styles.cardMeta}>
-                    {item.itemsCount} item{item.itemsCount !== 1 ? "s" : ""} ·{" "}
-                    {new Date(item.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(entry.created_at).toLocaleString("en-IN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      day: "2-digit",
+                      month: "short",
+                    })}
+                    {entry.retry_count > 0 ? ` · ${entry.retry_count} retr${entry.retry_count === 1 ? "y" : "ies"}` : ""}
                   </Text>
                 </View>
-                <Text style={styles.total}>{rupee(item.total)}</Text>
               </View>
 
-              <View style={[styles.statusRow, isFailed && { backgroundColor: COLORS.dangerBg }]}>
+              <View
+                style={[
+                  styles.statusRow,
+                  isFailed && { backgroundColor: COLORS.dangerBg },
+                ]}
+              >
                 <Feather
                   name={isFailed ? "alert-circle" : "clock"}
                   size={14}
                   color={isFailed ? COLORS.danger : COLORS.warning}
                 />
-                <Text style={[styles.statusText, isFailed && { color: COLORS.danger }]}>
-                  {isFailed ? item.reason : "Waiting for connection"}
+                <Text
+                  style={[styles.statusText, isFailed && { color: COLORS.danger }]}
+                >
+                  {isFailed ? (entry.error ?? "Rejected by server") : "Waiting for connection…"}
                 </Text>
               </View>
+              {isFailed && (
+                <View style={styles.actionRow}>
+                  <TouchableOpacity
+                    style={styles.retryBtn}
+                    onPress={() => retryEntry(entry)}
+                  >
+                    <Feather name="refresh-cw" size={13} color={COLORS.primary} />
+                    <Text style={styles.retryBtnText}>Retry</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.voidBtn}
+                    onPress={() => voidEntry(entry)}
+                  >
+                    <Feather name="x-circle" size={13} color={COLORS.danger} />
+                    <Text style={styles.voidBtnText}>Void &amp; Restore Stock</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           );
         }}
@@ -146,7 +231,10 @@ export default function OutboxScreen() {
       {pending.length > 0 && (
         <View style={styles.footer}>
           <TouchableOpacity
-            style={[styles.syncBtn, (!sync.online || sync.syncing) && { opacity: 0.6 }]}
+            style={[
+              styles.syncBtn,
+              (!sync.online || sync.syncing) && { opacity: 0.6 },
+            ]}
             onPress={doSync}
             disabled={sync.syncing || !sync.online}
             testID="outbox-sync-footer"
@@ -160,7 +248,9 @@ export default function OutboxScreen() {
               <>
                 <Feather name="upload-cloud" size={20} color={COLORS.white} />
                 <Text style={styles.syncBtnText}>
-                  {sync.online ? `Send ${pending.length} bill${pending.length !== 1 ? "s" : ""}` : "Go online to sync"}
+                  {sync.online
+                    ? `Send ${pending.length} bill${pending.length !== 1 ? "s" : ""}`
+                    : "Go online to sync"}
                 </Text>
               </>
             )}
@@ -191,6 +281,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   bannerText: { fontSize: 13, fontWeight: "600" },
+  sectionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: SPACING.md,
+    marginBottom: 4,
+  },
   sectionLabel: {
     fontSize: 11,
     fontWeight: "800",
@@ -209,12 +306,10 @@ const styles = StyleSheet.create({
   cardTop: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     padding: SPACING.md,
   },
   localNo: { fontSize: 14, fontWeight: "800", color: COLORS.text },
   cardMeta: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
-  total: { fontSize: 18, fontWeight: "900", color: COLORS.text },
   statusRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -223,7 +318,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: 8,
   },
-  statusText: { fontSize: 12, fontWeight: "600", color: COLORS.warning, flex: 1 },
+  statusText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: COLORS.warning,
+    flex: 1,
+  },
   empty: {
     alignItems: "center",
     padding: SPACING.xxl,
@@ -231,7 +331,12 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xxl,
   },
   emptyTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
-  emptyBody: { fontSize: 14, color: COLORS.textSecondary, textAlign: "center", lineHeight: 20 },
+  emptyBody: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
+  },
   footer: {
     padding: SPACING.lg,
     borderTopWidth: 1,
@@ -248,4 +353,34 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
   },
   syncBtnText: { color: COLORS.white, fontSize: 15, fontWeight: "800" },
+  actionRow: {
+    flexDirection: "row",
+    gap: 8,
+    padding: SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  retryBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 8,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  retryBtnText: { fontSize: 12, fontWeight: "700", color: COLORS.primary },
+  voidBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 8,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.dangerBg,
+  },
+  voidBtnText: { fontSize: 12, fontWeight: "700", color: COLORS.danger },
 });

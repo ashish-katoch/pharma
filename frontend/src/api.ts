@@ -7,6 +7,7 @@ export type ApiOptions = {
   method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: unknown;
   form?: Record<string, string>;
+  formData?: FormData;
   auth?: boolean;
 };
 
@@ -59,9 +60,12 @@ export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise
     body = Object.entries(opts.form)
       .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
       .join("&");
+  } else if (opts.formData) {
+    // Let browser/React Native set multipart/form-data Content-Type (with boundary)
+    body = opts.formData as unknown as BodyInit;
   } else if (opts.body !== undefined) {
     headers["Content-Type"] = "application/json";
-    body = JSON.stringify(opts.body);
+    body = typeof opts.body === "string" ? opts.body : JSON.stringify(opts.body);
   }
 
   const url = `${BASE_URL}/api${path}`;
@@ -73,11 +77,14 @@ export async function api<T = any>(path: string, opts: ApiOptions = {}): Promise
     throw new ApiError(e?.message || "Network request failed", { isNetwork: true });
   }
   const raw = await res.text();
-  let data: any = raw;
+  let data: any;
   try {
     data = raw ? JSON.parse(raw) : {};
   } catch {
-    /* keep raw */
+    if (!res.ok) {
+      throw new ApiError(`HTTP ${res.status}`, { status: res.status });
+    }
+    throw new ApiError(`Unexpected non-JSON response: ${raw.slice(0, 120)}`, { status: res.status });
   }
   if (!res.ok) {
     const detail = typeof data === "object" ? data?.detail || JSON.stringify(data) : String(data);

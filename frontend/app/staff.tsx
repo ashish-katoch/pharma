@@ -16,7 +16,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
+import { useIsOwner } from "@/src/auth";
 import { confirmDestructive } from "@/src/confirm";
+import { alertMsg } from "@/src/dialog";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
 type StaffUser = {
@@ -29,11 +31,14 @@ type StaffUser = {
 
 export default function StaffScreen() {
   const router = useRouter();
+  const isOwner = useIsOwner();
   const [users, setUsers] = useState<StaffUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ email: "", name: "", password: "" });
+  const [editing, setEditing] = useState<StaffUser | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", password: "" });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,7 +46,7 @@ export default function StaffScreen() {
       const list = await api<StaffUser[]>("/auth/staff");
       setUsers(list);
     } catch (e: any) {
-      Alert.alert("Access denied", e?.message || "Only owners can view staff.");
+      alertMsg("Access denied", e?.message || "Only owners can view staff.");
       router.back();
     } finally {
       setLoading(false);
@@ -52,7 +57,7 @@ export default function StaffScreen() {
 
   const addStaff = async () => {
     if (!form.email.trim() || !form.password.trim() || !form.name.trim()) {
-      Alert.alert("Missing", "Enter name, email and password");
+      alertMsg("Missing", "Enter name, email and password");
       return;
     }
     setSaving(true);
@@ -62,10 +67,38 @@ export default function StaffScreen() {
       setShowAdd(false);
       await load();
     } catch (e: any) {
-      Alert.alert("Failed", e?.message || "");
+      alertMsg("Failed", e?.message || "");
     } finally {
       setSaving(false);
     }
+  };
+
+  const openEdit = (u: StaffUser) => {
+    setEditing(u);
+    setEditForm({ name: u.name, password: "" });
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    if (!editForm.name.trim() && !editForm.password.trim()) {
+      alertMsg("Nothing to save", "Enter a new name or password");
+      return;
+    }
+    if (editForm.password && editForm.password.length < 8) {
+      alertMsg("Password too short", "Minimum 8 characters");
+      return;
+    }
+    setSaving(true);
+    try {
+      const body: Record<string, string> = {};
+      if (editForm.name.trim()) body.name = editForm.name.trim();
+      if (editForm.password) body.password = editForm.password;
+      await api(`/auth/staff/${editing.id}`, { method: "PUT", body });
+      setEditing(null);
+      await load();
+    } catch (e: any) {
+      alertMsg("Failed", e?.message || "");
+    } finally { setSaving(false); }
   };
 
   const removeStaff = (u: StaffUser) => {
@@ -75,10 +108,31 @@ export default function StaffScreen() {
         await api(`/auth/staff/${u.id}`, { method: "DELETE" });
         await load();
       } catch (e: any) {
-        Alert.alert("Failed", e?.message || "");
+        alertMsg("Failed", e?.message || "");
       }
     });
   };
+
+  if (!isOwner) {
+    return (
+      <SafeAreaView style={styles.root} edges={["top"]}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} testID="staff-back">
+            <Feather name="arrow-left" size={22} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Team</Text>
+          <View style={{ width: 22 }} />
+        </View>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12 }}>
+          <Feather name="lock" size={40} color={COLORS.textMuted} />
+          <Text style={{ fontSize: 16, fontWeight: "800" }}>Owner Only</Text>
+          <Text style={{ fontSize: 14, color: COLORS.textMuted, textAlign: "center" }}>
+            Staff management requires owner access.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.root} edges={["top"]}>
@@ -96,6 +150,30 @@ export default function StaffScreen() {
         <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
       ) : (
         <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: 8 }}>
+          <TouchableOpacity
+            style={styles.settingsLink}
+            onPress={() => router.push("/staff-report" as any)}
+          >
+            <Feather name="bar-chart-2" size={18} color={COLORS.primary} />
+            <Text style={styles.settingsLinkText}>Staff Sales Report</Text>
+            <Feather name="chevron-right" size={16} color={COLORS.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.settingsLink}
+            onPress={() => router.push("/shifts" as any)}
+          >
+            <Feather name="clock" size={18} color={COLORS.primary} />
+            <Text style={styles.settingsLinkText}>Shift Tracking</Text>
+            <Feather name="chevron-right" size={16} color={COLORS.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.settingsLink}
+            onPress={() => router.push("/printer-settings")}
+          >
+            <Feather name="printer" size={18} color={COLORS.primary} />
+            <Text style={styles.settingsLinkText}>Printer Settings</Text>
+            <Feather name="chevron-right" size={16} color={COLORS.textMuted} />
+          </TouchableOpacity>
           {users.map((u) => (
             <View key={u.id} style={styles.card}>
               <View style={styles.avatar}>
@@ -109,13 +187,22 @@ export default function StaffScreen() {
                 <Text style={[styles.roleText, u.role === "owner" && { color: COLORS.warning }]}>{u.role.toUpperCase()}</Text>
               </View>
               {u.role !== "owner" && (
-                <TouchableOpacity
-                  testID={`staff-delete-${u.id}`}
-                  onPress={() => removeStaff(u)}
-                  style={styles.trashBtn}
-                >
-                  <Feather name="trash-2" size={16} color={COLORS.danger} />
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    testID={`staff-edit-${u.id}`}
+                    onPress={() => openEdit(u)}
+                    style={styles.editBtn}
+                  >
+                    <Feather name="edit-2" size={15} color={COLORS.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    testID={`staff-delete-${u.id}`}
+                    onPress={() => removeStaff(u)}
+                    style={styles.trashBtn}
+                  >
+                    <Feather name="trash-2" size={16} color={COLORS.danger} />
+                  </TouchableOpacity>
+                </>
               )}
             </View>
           ))}
@@ -182,6 +269,51 @@ export default function StaffScreen() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
+      {/* Edit staff modal */}
+      <Modal visible={!!editing} animationType="slide" transparent onRequestClose={() => setEditing(null)}>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit {editing?.name}</Text>
+              <TouchableOpacity onPress={() => setEditing(null)}>
+                <Feather name="x" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ padding: SPACING.lg, gap: SPACING.md }}>
+              <View style={{ gap: 6 }}>
+                <Text style={styles.fieldLabel}>Name</Text>
+                <TextInput
+                  style={styles.field}
+                  value={editForm.name}
+                  onChangeText={(v) => setEditForm({ ...editForm, name: v })}
+                  placeholder="Full name"
+                  placeholderTextColor={COLORS.textMuted}
+                />
+              </View>
+              <View style={{ gap: 6 }}>
+                <Text style={styles.fieldLabel}>New Password (leave blank to keep current)</Text>
+                <TextInput
+                  style={styles.field}
+                  secureTextEntry
+                  value={editForm.password}
+                  onChangeText={(v) => setEditForm({ ...editForm, password: v })}
+                  placeholder="Min 8 characters"
+                  placeholderTextColor={COLORS.textMuted}
+                />
+              </View>
+              <TouchableOpacity
+                style={[styles.primaryBtn, saving && { opacity: 0.6 }]}
+                onPress={saveEdit}
+                disabled={saving}
+              >
+                {saving ? <ActivityIndicator color={COLORS.white} /> : (
+                  <Text style={styles.primaryBtnText}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -218,10 +350,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 4, borderRadius: RADIUS.pill, backgroundColor: COLORS.primaryLight,
   },
   roleText: { fontSize: 9, fontWeight: "800", color: COLORS.primary, letterSpacing: 1 },
+  editBtn: {
+    width: 34, height: 34, borderRadius: RADIUS.pill, backgroundColor: COLORS.primaryLight,
+    alignItems: "center", justifyContent: "center",
+  },
   trashBtn: {
     width: 34, height: 34, borderRadius: RADIUS.pill, backgroundColor: COLORS.dangerBg,
     alignItems: "center", justifyContent: "center",
   },
+  settingsLink: {
+    flexDirection: "row", alignItems: "center", gap: SPACING.sm,
+    backgroundColor: COLORS.white, borderRadius: RADIUS.md, padding: SPACING.md,
+    borderWidth: 1, borderColor: COLORS.border, marginBottom: SPACING.sm,
+  },
+  settingsLinkText: { flex: 1, fontSize: 14, fontWeight: "700", color: COLORS.primary },
   modalOverlay: { flex: 1, backgroundColor: "rgba(15,23,42,0.55)", justifyContent: "flex-end" },
   modalCard: { backgroundColor: COLORS.white, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
   modalHeader: {

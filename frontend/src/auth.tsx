@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { api, clearToken, getToken, setToken } from "@/src/api";
+import { pullChanges } from "@/src/db/DbProvider";
 
 export type User = {
   id: string;
@@ -13,6 +14,7 @@ type AuthContextValue = {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithTotp: (tempToken: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
 };
@@ -46,12 +48,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const res = await api<{ access_token: string; role: string; email: string }>(
+    const res = await api<{ access_token: string; role: string; email: string; totp_required?: boolean; temp_token?: string }>(
       "/auth/login",
       { method: "POST", form: { username: email, password }, auth: false },
     );
+    if (res.totp_required && res.temp_token) {
+      const err = new Error("totp_required");
+      (err as any).temp_token = res.temp_token;
+      throw err;
+    }
     await setToken(res.access_token);
     await refresh();
+    // Seed local catalog immediately after first login (startup pull had no token yet).
+    pullChanges().catch(() => {});
+  };
+
+  const loginWithTotp = async (tempToken: string, code: string) => {
+    const res = await api<{ access_token: string; role: string; email: string }>(
+      "/auth/2fa/challenge",
+      { method: "POST", body: JSON.stringify({ temp_token: tempToken, code }), auth: false },
+    );
+    await setToken(res.access_token);
+    await refresh();
+    pullChanges().catch(() => {});
   };
 
   const logout = async () => {
@@ -60,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthCtx.Provider value={{ user, loading, login, logout, refresh }}>
+    <AuthCtx.Provider value={{ user, loading, login, loginWithTotp, logout, refresh }}>
       {children}
     </AuthCtx.Provider>
   );
@@ -70,4 +89,9 @@ export function useAuth() {
   const ctx = useContext(AuthCtx);
   if (!ctx) throw new Error("useAuth must be inside AuthProvider");
   return ctx;
+}
+
+export function useIsOwner(): boolean {
+  const { user } = useAuth();
+  return user?.role === "owner";
 }

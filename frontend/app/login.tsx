@@ -18,11 +18,14 @@ import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
 export default function Login() {
   const router = useRouter();
-  const { login } = useAuth();
-  const [email, setEmail] = useState("owner@pharma.com");
-  const [password, setPassword] = useState("Owner@123");
+  const { login, loginWithTotp } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // 2FA challenge state
+  const [totpTempToken, setTotpTempToken] = useState<string | null>(null);
+  const [totpCode, setTotpCode] = useState("");
 
   const onSubmit = async () => {
     setError("");
@@ -31,11 +34,82 @@ export default function Login() {
       await login(email.trim(), password);
       router.replace("/(tabs)/home");
     } catch (e: any) {
-      setError(e?.message || "Login failed");
+      if (e?.message === "totp_required" && e?.temp_token) {
+        setTotpTempToken(e.temp_token);
+      } else {
+        setError(e?.message || "Login failed");
+      }
     } finally {
       setBusy(false);
     }
   };
+
+  const onTotpSubmit = async () => {
+    if (!totpTempToken || totpCode.length !== 6) return;
+    setError("");
+    setBusy(true);
+    try {
+      await loginWithTotp(totpTempToken, totpCode);
+      router.replace("/(tabs)/home");
+    } catch (e: any) {
+      setError(e?.message || "Invalid code");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // 2FA challenge screen
+  if (totpTempToken) {
+    return (
+      <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+            <View style={styles.brand}>
+              <View style={[styles.logo, { backgroundColor: "#7C3AED" }]}>
+                <Feather name="shield" size={36} color={COLORS.white} />
+              </View>
+              <Text style={styles.title}>Two-Factor Auth</Text>
+              <Text style={styles.subtitle}>Enter the 6-digit code from your authenticator app.</Text>
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.label}>Authenticator Code</Text>
+              <TextInput
+                style={[styles.input, { textAlign: "center", fontSize: 28, fontWeight: "900", letterSpacing: 8 }]}
+                keyboardType="numeric"
+                maxLength={6}
+                value={totpCode}
+                onChangeText={setTotpCode}
+                placeholder="000000"
+                placeholderTextColor={COLORS.textMuted}
+                autoFocus
+              />
+
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Feather name="alert-circle" size={16} color={COLORS.danger} />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: "#7C3AED" }]} onPress={onTotpSubmit} disabled={busy || totpCode.length !== 6} activeOpacity={0.85}>
+                {busy ? <ActivityIndicator color={COLORS.white} /> : (
+                  <>
+                    <Feather name="check" size={20} color={COLORS.white} />
+                    <Text style={styles.primaryBtnText}>Verify</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => { setTotpTempToken(null); setTotpCode(""); setError(""); }} style={{ alignItems: "center", marginTop: SPACING.sm }}>
+                <Text style={{ color: COLORS.primary, fontWeight: "700", fontSize: 13 }}>← Back to login</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
@@ -102,11 +176,6 @@ export default function Login() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.hint} testID="login-hint">
-            <Text style={styles.hintLabel}>Demo credentials</Text>
-            <Text style={styles.hintText}>Owner  · owner@pharma.com / Owner@123</Text>
-            <Text style={styles.hintText}>Staff  · staff@pharma.com / Staff@123</Text>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -177,18 +246,4 @@ const styles = StyleSheet.create({
     marginTop: SPACING.lg,
   },
   primaryBtnText: { color: COLORS.white, fontSize: 17, fontWeight: "700" },
-  hint: {
-    padding: SPACING.lg,
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: RADIUS.md,
-    gap: 4,
-  },
-  hintLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1,
-    color: COLORS.primary,
-    marginBottom: 4,
-  },
-  hintText: { fontSize: 13, color: COLORS.text, fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace" },
 });

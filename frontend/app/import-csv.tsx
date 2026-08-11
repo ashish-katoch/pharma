@@ -16,6 +16,7 @@ import { Feather } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { readAsStringAsync } from "expo-file-system/legacy";
 import { api } from "@/src/api";
+import { alertMsg, alertNav } from "@/src/dialog";
 import { parseMedicineCsv, ParsedMedicine, TEMPLATE_CSV } from "@/src/csv";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
@@ -46,7 +47,7 @@ export default function ImportCsv() {
     setErrors(errs);
     setFileName(label);
     if (parsed.length === 0) {
-      Alert.alert("Nothing to import", errs[0] || "No valid rows found in the file.");
+      alertMsg("Nothing to import", errs[0] || "No valid rows found in the file.");
     }
   };
 
@@ -61,13 +62,13 @@ export default function ImportCsv() {
       const text = await readTextFromUri(asset.uri);
       ingest(text, asset.name || "selected file");
     } catch (e: any) {
-      Alert.alert("Couldn't read file", e?.message || "Try the paste option instead.");
+      alertMsg("Couldn't read file", e?.message || "Try the paste option instead.");
     }
   };
 
   const usePaste = () => {
     if (!paste.trim()) {
-      Alert.alert("Empty", "Paste CSV text first.");
+      alertMsg("Empty", "Paste CSV text first.");
       return;
     }
     ingest(paste, "pasted text");
@@ -81,13 +82,13 @@ export default function ImportCsv() {
         method: "POST",
         body: { medicines: rows },
       });
-      Alert.alert(
+      alertNav(
         "Import complete",
         `${res.inserted} medicine${res.inserted === 1 ? "" : "s"} added to the catalogue.\n\nAdd stock batches from Inventory → Stock In.`,
-        [{ text: "Done", onPress: () => router.back() }],
+        () => router.back(),
       );
     } catch (e: any) {
-      Alert.alert("Import failed", e?.message || "Please try again.");
+      alertMsg("Import failed", e?.message || "Please try again.");
     } finally {
       setImporting(false);
     }

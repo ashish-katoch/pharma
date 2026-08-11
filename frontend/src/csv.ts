@@ -141,9 +141,9 @@ export function parseMedicineCsv(text: string): ParseResult {
     headerMap.forEach((field, idx) => {
       if (!field) return;
       const val = cells[idx] ?? "";
-      if (field === "gst_rate") rec.gst_rate = toNumber(val, 12);
-      else if (field === "mrp") rec.mrp = toNumber(val, 0);
-      else if (field === "reorder_level") rec.reorder_level = Math.round(toNumber(val, 10));
+      if (field === "gst_rate") rec.gst_rate = Math.min(28, Math.max(0, toNumber(val, 12)));
+      else if (field === "mrp") rec.mrp = Math.max(0, toNumber(val, 0));
+      else if (field === "reorder_level") rec.reorder_level = Math.max(0, Math.round(toNumber(val, 10)));
       else rec[field] = val;
     });
 

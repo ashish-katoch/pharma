@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -13,23 +13,30 @@ import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { api } from "@/src/api";
 import { Medicine } from "@/src/cart";
+import { requestScan, cancelScan } from "@/src/scanBus";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { useStoreConfig } from "@/src/storeConfig";
 
 const rupee = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
-const FILTERS = [
-  { id: "all", label: "All" },
-  { id: "low", label: "Low stock" },
-  { id: "otc", label: "OTC" },
-  { id: "h", label: "Schedule H" },
+const BASE_FILTERS = [
+  { id: "all",  label: "All" },
+  { id: "low",  label: "Low stock" },
+  { id: "otc",  label: "OTC" },
+  { id: "h",    label: "Schedule H" },
 ] as const;
+type FilterId = (typeof BASE_FILTERS)[number]["id"];
 
 export default function Inventory() {
   const router = useRouter();
+  const storeConfig = useStoreConfig();
+  const FILTERS = BASE_FILTERS.filter((f) => f.id !== "h" || storeConfig.schedule_h);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
+  const [filter, setFilter] = useState<FilterId>("all");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => () => cancelScan(), []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,6 +56,14 @@ export default function Inventory() {
       load();
     }, [load]),
   );
+
+  const scanBarcode = () => {
+    requestScan((code) => {
+      // Fill search with scanned barcode — the load() effect will fire
+      setQuery(code);
+    });
+    router.push({ pathname: "/scan", params: { mode: "return" } });
+  };
 
   const filtered = medicines.filter((m) => {
     if (filter === "low") return m.total_stock <= (m.reorder_level ?? 10);
@@ -94,6 +109,15 @@ export default function Inventory() {
           onChangeText={setQuery}
           autoCorrect={false}
         />
+        {query ? (
+          <TouchableOpacity onPress={() => setQuery("")} testID="inventory-clear-search">
+            <Feather name="x" size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={scanBarcode} testID="inventory-scan-btn">
+            <Feather name="camera" size={18} color={COLORS.textMuted} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.chipsWrap}>
@@ -115,6 +139,12 @@ export default function Inventory() {
           )}
         />
       </View>
+
+      <TouchableOpacity style={styles.locationBar} onPress={() => router.push("/location-browser" as any)}>
+        <Feather name="map-pin" size={15} color={COLORS.primary} />
+        <Text style={styles.locationBarText}>Location Browser (Block / Row / Shelf)</Text>
+        <Feather name="chevron-right" size={15} color={COLORS.textMuted} />
+      </TouchableOpacity>
 
       <FlatList
         data={filtered}
@@ -147,6 +177,7 @@ export default function Inventory() {
                   {item.total_stock} in stock
                 </Text>
                 {item.schedule ? <Text style={styles.schedTag}>{item.schedule}</Text> : null}
+                {item.location ? <Text style={styles.locTag}>{item.location}</Text> : null}
                 <Text style={styles.mrpTag}>{rupee(item.mrp)}</Text>
               </View>
             </View>
@@ -235,6 +266,29 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  locationBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    backgroundColor: COLORS.primaryLight,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.sm,
+    padding: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  locationBarText: { flex: 1, fontSize: 13, fontWeight: "700", color: COLORS.primary },
+  locTag: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#6366F1",
+    backgroundColor: "#EEF2FF",
     paddingHorizontal: 6,
     paddingVertical: 3,
     borderRadius: 6,

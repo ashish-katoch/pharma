@@ -13,6 +13,9 @@ export type Medicine = {
   total_stock: number;
   reorder_level: number;
   schedule?: string;
+  location?: string;
+  uom?: string;   // pcs | kg | ltr | dz
+  barcode?: string;
 };
 
 export type CartLine = {
@@ -60,7 +63,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const remove = (id: string) => setLines((p) => p.filter((l) => l.medicine.id !== id));
   const setQty = (id: string, qty: number) =>
-    setLines((p) => p.map((l) => (l.medicine.id === id ? { ...l, quantity: Math.max(1, qty) } : l)));
+    setLines((p) => p.map((l) => (l.medicine.id === id ? { ...l, quantity: Math.max(0.001, qty) } : l)));
   const setLineDiscount = (id: string, pct: number) =>
     setLines((p) => p.map((l) => (l.medicine.id === id ? { ...l, discount_pct: Math.max(0, Math.min(100, pct)) } : l)));
   const setCustomer = (name: string, phone: string) => {

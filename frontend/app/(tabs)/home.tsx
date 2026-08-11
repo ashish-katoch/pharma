@@ -18,8 +18,14 @@ import { COLORS, RADIUS, SPACING } from "@/src/theme";
 type Stats = {
   sales_total: number;
   bill_count: number;
+  profit_today: number;
+  purchase_total: number;
+  pending_credit_count: number;
+  pending_credit_amount: number;
   low_stock_count: number;
   expiring_30_count: number;
+  wow_sales: number;
+  wow_pct: number;
 };
 
 const rupee = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -75,7 +81,17 @@ export default function Home() {
 
         {/* KPI card */}
         <View style={styles.kpiCard}>
-          <Text style={styles.kpiLabel}>TODAY'S SALES</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Text style={styles.kpiLabel}>TODAY'S SALES</Text>
+            {!loading && (stats?.wow_pct ?? 0) !== 0 && (
+              <View style={[styles.wowBadge, { backgroundColor: (stats?.wow_pct ?? 0) >= 0 ? "#DCFCE7" : "#FEE2E2" }]}>
+                <Feather name={(stats?.wow_pct ?? 0) >= 0 ? "trending-up" : "trending-down"} size={10} color={(stats?.wow_pct ?? 0) >= 0 ? "#16A34A" : "#DC2626"} />
+                <Text style={[styles.wowText, { color: (stats?.wow_pct ?? 0) >= 0 ? "#16A34A" : "#DC2626" }]}>
+                  {(stats?.wow_pct ?? 0) >= 0 ? "+" : ""}{stats?.wow_pct ?? 0}% vs last week
+                </Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.kpiAmount} testID="home-today-sales">
             {loading ? "…" : rupee(stats?.sales_total ?? 0)}
           </Text>
@@ -83,6 +99,28 @@ export default function Home() {
             <Feather name="file-text" size={13} color={COLORS.textSecondary} />
             <Text style={styles.kpiSubText}>{stats?.bill_count ?? 0} bills</Text>
           </View>
+        </View>
+
+        {/* Secondary KPI row */}
+        <View style={styles.kpiRow}>
+          <View style={[styles.miniKpi, { borderColor: (stats?.profit_today ?? 0) >= 0 ? COLORS.success : COLORS.danger }]}>
+            <Text style={styles.miniKpiLabel}>PROFIT TODAY</Text>
+            <Text style={[styles.miniKpiValue, { color: (stats?.profit_today ?? 0) >= 0 ? COLORS.success : COLORS.danger }]}>
+              {loading ? "…" : rupee(stats?.profit_today ?? 0)}
+            </Text>
+            <Text style={styles.miniKpiSub}>after ₹{loading ? "…" : (stats?.purchase_total ?? 0).toLocaleString("en-IN")} purchased</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.miniKpi, (stats?.pending_credit_count ?? 0) > 0 && { borderColor: COLORS.warning }]}
+            onPress={() => router.push("/history" as any)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.miniKpiLabel}>PENDING PAYMENTS</Text>
+            <Text style={[styles.miniKpiValue, { color: (stats?.pending_credit_count ?? 0) > 0 ? COLORS.warning : COLORS.text }]}>
+              {loading ? "…" : rupee(stats?.pending_credit_amount ?? 0)}
+            </Text>
+            <Text style={styles.miniKpiSub}>{stats?.pending_credit_count ?? 0} credit bills</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Primary CTA */}
@@ -127,6 +165,30 @@ export default function Home() {
             icon="bar-chart-2"
             label="Reports"
             onPress={() => router.push("/(tabs)/reports")}
+          />
+          <QuickTile
+            testID="home-customers-tile"
+            icon="users"
+            label="Customers"
+            onPress={() => router.push("/customers")}
+          />
+          <QuickTile
+            testID="home-eod-tile"
+            icon="moon"
+            label="Close Day"
+            onPress={() => router.push("/eod-close")}
+          />
+          <QuickTile
+            testID="home-reorder-tile"
+            icon="refresh-cw"
+            label="Reorder"
+            onPress={() => router.push("/reorder")}
+          />
+          <QuickTile
+            testID="home-expenses-tile"
+            icon="credit-card"
+            label="Expenses"
+            onPress={() => router.push("/expenses" as any)}
           />
         </View>
 
@@ -214,6 +276,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   kpiLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 1.5, color: "#94A3B8" },
+  wowBadge: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADIUS.pill },
+  wowText: { fontSize: 10, fontWeight: "800" },
   kpiAmount: {
     fontSize: 40,
     fontWeight: "900",
@@ -222,6 +286,19 @@ const styles = StyleSheet.create({
   },
   kpiSub: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
   kpiSubText: { color: "#CBD5E1", fontSize: 13 },
+  kpiRow: { flexDirection: "row", gap: SPACING.md },
+  miniKpi: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    padding: SPACING.md,
+    gap: 2,
+  },
+  miniKpiLabel: { fontSize: 9, fontWeight: "800", letterSpacing: 1.2, color: COLORS.textMuted },
+  miniKpiValue: { fontSize: 18, fontWeight: "800", color: COLORS.text, marginTop: 2 },
+  miniKpiSub: { fontSize: 11, color: COLORS.textMuted, marginTop: 1 },
   newBillBtn: {
     backgroundColor: COLORS.primary,
     borderRadius: RADIUS.lg,

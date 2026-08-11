@@ -14,9 +14,10 @@ import { Linking } from "react-native";
 export function normalizePhone(raw: string): string {
   if (!raw) return "";
   let digits = raw.replace(/[^\d]/g, "");
-  // Drop a leading 0 (national trunk prefix).
-  digits = digits.replace(/^0+/, "");
+  digits = digits.replace(/^0+/, ""); // drop national trunk prefix (00xx or 0)
   if (digits.length === 10) digits = "91" + digits; // assume India
+  // Reject obviously invalid lengths to avoid silently opening wrong WhatsApp chats.
+  if (digits.length < 10 || digits.length > 15) return "";
   return digits;
 }
 
