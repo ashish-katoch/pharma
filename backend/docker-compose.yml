@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pharma
+      POSTGRES_PASSWORD: pharma
+      POSTGRES_DB: pharma
+    ports:
+      - "5432:5432"
+    volumes:
+      - pharma_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pharma"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://pharma:pharma@db:5432/pharma
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-min-32-chars}
+      ENV: development
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+
+volumes:
+  pharma_pg_data:
