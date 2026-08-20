@@ -80,6 +80,66 @@ function AppContent() {
         <Stack.Screen name="cashflow" />
         <Stack.Screen name="pnl-breakdown" />
         <Stack.Screen name="barcode-labels" />
+        {/* Auth / Onboarding */}
+        <Stack.Screen name="welcome" />
+        <Stack.Screen name="forgot-password" />
+        <Stack.Screen name="otp" />
+        <Stack.Screen name="onboarding-store" />
+        <Stack.Screen name="stay-notified" />
+        <Stack.Screen name="language" />
+        {/* Loyalty & Discounts */}
+        <Stack.Screen name="loyalty" />
+        <Stack.Screen name="loyalty-history" />
+        <Stack.Screen name="discounts" />
+        <Stack.Screen name="discount-new" options={{ presentation: "modal" }} />
+        {/* Prescriptions */}
+        <Stack.Screen name="prescriptions" />
+        {/* Staff / Shifts */}
+        <Stack.Screen name="staff-payroll" />
+        <Stack.Screen name="shift-handover" options={{ presentation: "modal" }} />
+        <Stack.Screen name="shift-summary" />
+        {/* Analytics */}
+        <Stack.Screen name="analytics/real-time" />
+        <Stack.Screen name="analytics/sales" />
+        <Stack.Screen name="analytics/abc" />
+        <Stack.Screen name="analytics/turnover" />
+        <Stack.Screen name="analytics/expiry-forecast" />
+        <Stack.Screen name="analytics/restock" />
+        {/* Purchases */}
+        <Stack.Screen name="purchase-order-draft" />
+        {/* Search */}
+        <Stack.Screen name="global-search" options={{ presentation: "modal" }} />
+        {/* Finance */}
+        <Stack.Screen name="bulk-supplier-payments" />
+        {/* Admin */}
+        <Stack.Screen name="roles" />
+        <Stack.Screen name="permissions" />
+        {/* Settings sub-screens */}
+        <Stack.Screen name="store-profile" />
+        <Stack.Screen name="billing-preferences" />
+        <Stack.Screen name="tax-settings" />
+        <Stack.Screen name="hardware-settings" />
+        <Stack.Screen name="network-settings" />
+        <Stack.Screen name="network-overview" />
+        <Stack.Screen name="backup-security" />
+        <Stack.Screen name="data-retention" />
+        <Stack.Screen name="help-support" />
+        <Stack.Screen name="automation" />
+        {/* Logs */}
+        <Stack.Screen name="access-logs" />
+        <Stack.Screen name="activity-logs" />
+        <Stack.Screen name="archive-logs" />
+        {/* Multi-store */}
+        <Stack.Screen name="store-performance" />
+        <Stack.Screen name="inter-store-transfers" />
+        {/* Reports */}
+        <Stack.Screen name="report-builder" />
+        <Stack.Screen name="report-preview" />
+        <Stack.Screen name="scheduled-reports" />
+        <Stack.Screen name="export-history" />
+        <Stack.Screen name="bulk-export" />
+        <Stack.Screen name="export-config" />
+        <Stack.Screen name="regulatory-vault" />
       </Stack>
       {locked && <LockScreen />}
     </>
