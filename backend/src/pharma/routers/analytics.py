@@ -20,6 +20,7 @@ from pharma.schemas.analytics import (
     CustomerAnalyticsOut,
     DoctorAnalyticsOut,
     DoctorRevenueOut,
+    PnlDetailOut,
     PnlOut,
     PurchaseAnalyticsOut,
     SalesAnalyticsOut,
@@ -60,32 +61,73 @@ async def staff_analytics(month: str = Query(), shop_id: uuid.UUID = Depends(get
     return [{"staff_name": name, "total_sales": float(total), "bill_count": int(count)} for name, total, count in rows]
 
 
-@router.get("/pnl", response_model=PnlOut)
+@router.get("/pnl", response_model=PnlDetailOut)
 async def pnl(month: str = Query(), shop_id: uuid.UUID = Depends(get_current_shop), db: AsyncSession = Depends(get_db)):
+    from pharma.models.purchase import Purchase
+
     year, mon = _month_bounds(month)
-    # Revenue is taxable value (subtotal), not the GST-inclusive total — GST
-    # collected is a liability owed to the government, not shop income.
-    revenue_stmt = select(func.coalesce(func.sum(Bill.subtotal), 0)).where(
-        Bill.shop_id == shop_id, Bill.status == "active", extract("year", Bill.created_at) == year, extract("month", Bill.created_at) == mon
-    )
+    bill_where = (Bill.shop_id == shop_id, Bill.status == "active",
+                  extract("year", Bill.created_at) == year, extract("month", Bill.created_at) == mon)
+
+    # Gross revenue = subtotal + discounts (i.e. what was on the bill before discount)
+    gross_rev_stmt = select(
+        func.coalesce(func.sum(Bill.subtotal + Bill.discount), 0)
+    ).where(*bill_where)
+    discount_stmt = select(func.coalesce(func.sum(Bill.discount), 0)).where(*bill_where)
+    revenue_stmt = select(func.coalesce(func.sum(Bill.subtotal), 0)).where(*bill_where)
+    bill_count_stmt = select(func.count(Bill.id)).where(*bill_where)
     cogs_stmt = (
         select(func.coalesce(func.sum(BillLine.qty * Batch.purchase_price), 0))
         .join(Bill, Bill.id == BillLine.bill_id)
         .join(Batch, Batch.id == BillLine.batch_id)
-        .where(Bill.shop_id == shop_id, Bill.status == "active", extract("year", Bill.created_at) == year, extract("month", Bill.created_at) == mon)
+        .where(*bill_where)
     )
-    expense_stmt = select(func.coalesce(func.sum(Expense.amount), 0)).where(
-        Expense.shop_id == shop_id, extract("year", Expense.expense_date) == year, extract("month", Expense.expense_date) == mon
+    exp_total_stmt = select(func.coalesce(func.sum(Expense.amount), 0)).where(
+        Expense.shop_id == shop_id,
+        extract("year", Expense.expense_date) == year,
+        extract("month", Expense.expense_date) == mon,
     )
+    exp_by_cat_stmt = (
+        select(Expense.category, func.coalesce(func.sum(Expense.amount), 0))
+        .where(
+            Expense.shop_id == shop_id,
+            extract("year", Expense.expense_date) == year,
+            extract("month", Expense.expense_date) == mon,
+        )
+        .group_by(Expense.category)
+    )
+    purchase_count_stmt = select(func.count(Purchase.id)).where(
+        Purchase.shop_id == shop_id,
+        extract("year", Purchase.created_at) == year,
+        extract("month", Purchase.created_at) == mon,
+    )
+
+    gross_rev = float((await db.execute(gross_rev_stmt)).scalar_one())
+    discounts = float((await db.execute(discount_stmt)).scalar_one())
     revenue = float((await db.execute(revenue_stmt)).scalar_one())
+    bill_count = int((await db.execute(bill_count_stmt)).scalar_one())
     cogs = float((await db.execute(cogs_stmt)).scalar_one())
-    expenses = float((await db.execute(expense_stmt)).scalar_one())
+    total_expenses = float((await db.execute(exp_total_stmt)).scalar_one())
+    exp_by_cat = [(cat, float(amt)) for cat, amt in (await db.execute(exp_by_cat_stmt)).all()]
+    purchase_count = int((await db.execute(purchase_count_stmt)).scalar_one())
+
+    gross_profit = round(revenue - cogs, 2)
+    net_profit = round(gross_profit - total_expenses, 2)
+    margin_pct = round((net_profit / revenue * 100), 1) if revenue > 0 else 0.0
+
     return {
         "month": month,
+        "gross_revenue": round(gross_rev, 2),
+        "discounts_given": round(discounts, 2),
         "revenue": round(revenue, 2),
         "cogs": round(cogs, 2),
-        "expenses": expenses,
-        "profit": round(revenue - cogs - expenses, 2),
+        "gross_profit": gross_profit,
+        "total_expenses": round(total_expenses, 2),
+        "net_profit": net_profit,
+        "margin_pct": margin_pct,
+        "bill_count": bill_count,
+        "purchase_count": purchase_count,
+        "expenses_by_category": [{"category": cat, "amount": amt} for cat, amt in exp_by_cat],
     }
 
 

@@ -23,6 +23,26 @@ class PnlOut(BaseModel):
     profit: float
 
 
+class ExpenseCategoryRow(BaseModel):
+    category: str
+    amount: float
+
+
+class PnlDetailOut(BaseModel):
+    month: str
+    gross_revenue: float
+    discounts_given: float
+    revenue: float
+    cogs: float
+    gross_profit: float
+    total_expenses: float
+    net_profit: float
+    margin_pct: float
+    bill_count: int
+    purchase_count: int
+    expenses_by_category: list[ExpenseCategoryRow]
+
+
 class DoctorAnalyticsOut(BaseModel):
     month: str
     doctor_count: int
