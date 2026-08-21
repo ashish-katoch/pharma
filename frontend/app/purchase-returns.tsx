@@ -7,10 +7,8 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   TextInput,
-  Platform,
-  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { PageShell } from "@/src/components/PageShell";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { api } from "@/src/api";
@@ -33,8 +31,6 @@ type SupplierReturn = {
 
 export default function PurchaseReturns() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [list, setList] = useState<SupplierReturn[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -61,18 +57,14 @@ export default function PurchaseReturns() {
 
   const totalReturned = list.reduce((s, r) => s + r.total_amount, 0);
 
+  const NewBtn = (
+    <TouchableOpacity onPress={() => router.push("/supplier-return" as any)} style={styles.newBtn}>
+      <Feather name="plus" size={18} color={COLORS.white} />
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Purchase Returns</Text>
-        <TouchableOpacity onPress={() => router.push("/supplier-return" as any)} style={styles.newBtn}>
-          <Feather name="plus" size={18} color={COLORS.white} />
-        </TouchableOpacity>
-      </View>
+    <PageShell title="Purchase Returns" showBack scrollable={false} noPadding rightAction={NewBtn}>
 
       <View style={styles.searchRow}>
         <Feather name="search" size={15} color={COLORS.textMuted} />
@@ -162,31 +154,11 @@ export default function PurchaseReturns() {
           }}
         />
       )}
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.sm,
-    padding: SPACING.lg,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   newBtn: {
     width: 36,
     height: 36,

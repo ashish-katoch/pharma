@@ -8,7 +8,6 @@ import {
   FlatList,
   ActivityIndicator,
   KeyboardAvoidingView,
-  useWindowDimensions,
   Platform,
   Modal,
   ScrollView,
@@ -16,6 +15,7 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { PageShell } from "@/src/components/PageShell";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -56,8 +56,6 @@ export default function Billing() {
   const cart = useCart();
   const sync = useSync();
   const { user } = useAuth();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Medicine[]>([]);
   const [offline, setOffline] = useState(false);
@@ -356,8 +354,7 @@ export default function Billing() {
   };
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
+    <PageShell scrollable={false} noPadding>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
@@ -1140,8 +1137,7 @@ export default function Billing() {
           </View>
         </View>
       </Modal>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
@@ -1163,15 +1159,6 @@ function Row({ label, value, tone, big, muted }: any) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 1080,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",

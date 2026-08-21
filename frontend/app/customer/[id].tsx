@@ -3,9 +3,8 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Modal, TextInput,
   KeyboardAvoidingView, Platform, RefreshControl,
-  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { PageShell } from "@/src/components/PageShell";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
 import { Feather } from "@expo/vector-icons";
@@ -54,9 +53,6 @@ export default function CustomerDetail() {
   const [dateTo, setDateTo] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [billSearch, setBillSearch] = useState("");
-
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
 
   const load = useCallback(async (from = dateFrom, to = dateTo) => {
     setLoading(true);
@@ -108,9 +104,9 @@ export default function CustomerDetail() {
 
   if (loading && !customer) {
     return (
-      <SafeAreaView style={styles.root} edges={["top"]}>
+      <PageShell title="Customer" showBack scrollable={false}>
         <ActivityIndicator style={{ marginTop: 80 }} color={COLORS.primary} />
-      </SafeAreaView>
+      </PageShell>
     );
   }
 
@@ -132,22 +128,18 @@ export default function CustomerDetail() {
 
   const hasFilter = !!dateFrom || !!dateTo;
 
+  const FilterBtn = (
+    <TouchableOpacity
+      onPress={() => setFilterOpen(true)}
+      style={[styles.filterBtn, hasFilter && { backgroundColor: COLORS.primary }]}
+    >
+      <Feather name="filter" size={16} color={hasFilter ? COLORS.white : COLORS.text} />
+      {hasFilter && <View style={styles.filterDot} />}
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title} numberOfLines={1}>{customer.name}</Text>
-        <TouchableOpacity
-          onPress={() => setFilterOpen(true)}
-          style={[styles.filterBtn, hasFilter && { backgroundColor: COLORS.primary }]}
-        >
-          <Feather name="filter" size={16} color={hasFilter ? COLORS.white : COLORS.text} />
-          {hasFilter && <View style={styles.filterDot} />}
-        </TouchableOpacity>
-      </View>
+    <PageShell title={customer.name} showBack scrollable={false} noPadding rightAction={FilterBtn}>
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -352,23 +344,11 @@ export default function CustomerDetail() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, padding: SPACING.lg, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   filterBtn: { width: 34, height: 34, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" },
   filterDot: { position: "absolute", top: 4, right: 4, width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.danger },
   scroll: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 60 },

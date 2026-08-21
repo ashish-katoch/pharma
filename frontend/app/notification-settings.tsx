@@ -8,14 +8,12 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Platform,
-  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import { COLORS, SPACING, RADIUS } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
 
 type NotifPrefs = {
   low_stock_alerts: boolean;
@@ -35,8 +33,6 @@ const EXPIRY_OPTIONS = [30, 60, 90, 180];
 
 export default function NotificationSettingsScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [prefs, setPrefs] = useState<NotifPrefs>(DEFAULT_PREFS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -71,33 +67,22 @@ export default function NotificationSettingsScreen() {
     setPrefs((p) => ({ ...p, [key]: !p[key] }));
   };
 
+  const SaveBtn = (
+    <TouchableOpacity onPress={save} disabled={saving} style={styles.saveBtn}>
+      {saving ? <ActivityIndicator color={COLORS.white} size="small" /> : <Text style={styles.saveBtnText}>Save</Text>}
+    </TouchableOpacity>
+  );
+
   if (loading) {
     return (
-      <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-        <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-          <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
-        </View>
-      </SafeAreaView>
+      <PageShell title="Notification Settings" showBack rightAction={SaveBtn}>
+        <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
+      </PageShell>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Notification Settings</Text>
-        <TouchableOpacity onPress={save} disabled={saving} style={styles.saveBtn}>
-          {saving ? (
-            <ActivityIndicator color={COLORS.white} size="small" />
-          ) : (
-            <Text style={styles.saveBtnText}>Save</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
+    <PageShell title="Notification Settings" showBack rightAction={SaveBtn}>
       <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: SPACING.md }}>
         <Text style={styles.sectionLabel}>STOCK ALERTS</Text>
         <View style={styles.card}>
@@ -147,8 +132,7 @@ export default function NotificationSettingsScreen() {
           />
         </View>
       </ScrollView>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 

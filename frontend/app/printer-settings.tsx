@@ -8,9 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import {
@@ -21,6 +19,7 @@ import {
   clearSavedPrinter,
 } from "@/src/thermal/PrinterService";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
 
 type ScannedDevice = {
   id: string;
@@ -29,8 +28,6 @@ type ScannedDevice = {
 
 export default function PrinterSettings() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [scanning, setScanning] = useState(false);
   const [devices, setDevices] = useState<ScannedDevice[]>([]);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -73,16 +70,16 @@ export default function PrinterSettings() {
     setSavedId(null);
   }
 
-  return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Printer Settings</Text>
-      </View>
+  const ScanBtn = (
+    <TouchableOpacity onPress={startScan} style={styles.scanBtnSmall} disabled={scanning}>
+      {scanning
+        ? <ActivityIndicator color={COLORS.white} size="small" />
+        : <Feather name="radio" size={16} color={COLORS.white} />}
+    </TouchableOpacity>
+  );
 
+  return (
+    <PageShell title="Printer Settings" showBack scrollable={false} noPadding rightAction={ScanBtn}>
       {savedId && (
         <View style={styles.savedCard}>
           <Feather name="check-circle" size={20} color={COLORS.success} />
@@ -105,6 +102,7 @@ export default function PrinterSettings() {
           <Text style={styles.scanBtnText}>{scanning ? "Scanning…" : "Scan"}</Text>
         </TouchableOpacity>
       </View>
+
 
       {scanning && devices.length === 0 && (
         <Text style={styles.hint}>Looking for BLE printers… (10 sec)</Text>
@@ -138,33 +136,15 @@ export default function PrinterSettings() {
           </View>
         )}
       />
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
+  scanBtnSmall: {
+    width: 34, height: 34, borderRadius: 8,
+    backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center",
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.sm,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  back: { padding: 4 },
-  title: { fontSize: 18, fontWeight: "700", color: COLORS.text },
   savedCard: {
     margin: SPACING.lg,
     padding: SPACING.md,

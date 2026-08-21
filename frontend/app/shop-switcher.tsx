@@ -1,9 +1,9 @@
 import { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Alert, ActivityIndicator, TextInput, Platform, useWindowDimensions,
+  Alert, ActivityIndicator, TextInput,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { PageShell } from "@/src/components/PageShell";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
@@ -15,8 +15,6 @@ type SwitchResp = { access_token: string; token_type: string; shop_id: string; s
 
 export default function ShopSwitcherScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
   const [switching, setSwitching] = useState<string | null>(null);
@@ -98,18 +96,14 @@ export default function ShopSwitcherScreen() {
     );
   };
 
+  const AddBtn = (
+    <TouchableOpacity onPress={() => setShowCreate((v) => !v)} style={styles.addBtn}>
+      <Feather name={showCreate ? "x" : "plus"} size={18} color={COLORS.white} />
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Multi-Store</Text>
-        <TouchableOpacity onPress={() => setShowCreate((v) => !v)} style={styles.addBtn}>
-          <Feather name={showCreate ? "x" : "plus"} size={18} color={COLORS.white} />
-        </TouchableOpacity>
-      </View>
+    <PageShell title="Multi-Store" showBack scrollable={false} noPadding rightAction={AddBtn}>
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Create new shop form */}
@@ -210,27 +204,11 @@ export default function ShopSwitcherScreen() {
           ))
         )}
       </ScrollView>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: "row", alignItems: "center", gap: SPACING.sm,
-    padding: SPACING.lg, backgroundColor: COLORS.white,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
-  },
-  title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   addBtn: {
     width: 34, height: 34, borderRadius: 17,
     backgroundColor: COLORS.primary,

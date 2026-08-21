@@ -9,9 +9,8 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { PageShell } from "@/src/components/PageShell";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
@@ -66,9 +65,6 @@ export default function BillEdit() {
   const [lines, setLines] = useState<EditLine[]>([]);
   const [paymentMode, setPaymentMode] = useState("cash");
   const [reason, setReason] = useState("");
-
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
 
   useEffect(() => {
     (async () => {
@@ -148,9 +144,9 @@ export default function BillEdit() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
+      <PageShell title="Edit Bill" showBack scrollable={false}>
         <ActivityIndicator style={{ flex: 1 }} color={COLORS.primary} />
-      </SafeAreaView>
+      </PageShell>
     );
   }
 
@@ -158,24 +154,32 @@ export default function BillEdit() {
 
   const editCount = bill.edit_count ?? 0;
 
+  const EditCountBadge = editCount > 0 ? (
+    <View style={styles.editCountBadge}>
+      <Text style={styles.editCountText}>Edited {editCount}×</Text>
+    </View>
+  ) : undefined;
+
+  const SaveBar = (
+    <TouchableOpacity
+      style={[styles.saveBtn, saving && { opacity: 0.6 }]}
+      onPress={save}
+      disabled={saving}
+      testID="bill-edit-save"
+    >
+      {saving ? (
+        <ActivityIndicator color={COLORS.white} />
+      ) : (
+        <>
+          <Feather name="check" size={18} color={COLORS.white} />
+          <Text style={styles.saveBtnText}>Save Changes</Text>
+        </>
+      )}
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top", "bottom"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} testID="bill-edit-back">
-          <Feather name="x" size={26} color={COLORS.text} />
-        </TouchableOpacity>
-        <View style={{ flex: 1, marginLeft: SPACING.md }}>
-          <Text style={styles.title}>Edit Bill</Text>
-          <Text style={styles.subtitle}>{bill.bill_no} · {bill.customer_name || "Walk-in"}</Text>
-        </View>
-        {editCount > 0 && (
-          <View style={styles.editCountBadge}>
-            <Text style={styles.editCountText}>Edited {editCount}×</Text>
-          </View>
-        )}
-      </View>
+    <PageShell title="Edit Bill" showBack scrollable={false} noPadding rightAction={EditCountBadge} footer={SaveBar}>
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -261,51 +265,11 @@ export default function BillEdit() {
 
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Save bar */}
-      <View style={styles.saveBar}>
-        <TouchableOpacity
-          style={[styles.saveBtn, saving && { opacity: 0.6 }]}
-          onPress={save}
-          disabled={saving}
-          testID="bill-edit-save"
-        >
-          {saving ? (
-            <ActivityIndicator color={COLORS.white} />
-          ) : (
-            <>
-              <Feather name="check" size={18} color={COLORS.white} />
-              <Text style={styles.saveBtnText}>Save Changes</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.white,
-  },
-  title: { fontSize: 17, fontWeight: "800", color: COLORS.text },
-  subtitle: { fontSize: 13, color: COLORS.textMuted, marginTop: 1 },
   editCountBadge: {
     backgroundColor: "#FEF3C7",
     borderRadius: RADIUS.pill,
@@ -390,12 +354,6 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 1, color: COLORS.textMuted },
   totalValue: { fontSize: 28, fontWeight: "900", color: COLORS.text },
   totalDiff: { fontSize: 13, color: COLORS.textMuted },
-  saveBar: {
-    padding: SPACING.lg,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    backgroundColor: COLORS.white,
-  },
   saveBtn: {
     flexDirection: "row",
     alignItems: "center",

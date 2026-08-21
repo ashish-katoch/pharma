@@ -10,9 +10,9 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { PageShell } from "@/src/components/PageShell";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
@@ -67,9 +67,6 @@ export default function MedicineDetail() {
   const [editForm, setEditForm] = useState<Partial<Medicine>>({});
   const [saving, setSaving] = useState(false);
 
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
-
   useEffect(() => {
     (async () => {
       try {
@@ -122,26 +119,20 @@ export default function MedicineDetail() {
 
   if (loading || !med) {
     return (
-      <SafeAreaView style={styles.root} edges={["top"]}>
+      <PageShell title="Medicine" showBack scrollable={false}>
         <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
-      </SafeAreaView>
+      </PageShell>
     );
   }
 
+  const EditBtn = isOwner ? (
+    <TouchableOpacity onPress={openEdit} testID="medicine-edit-btn">
+      <Feather name="edit-2" size={20} color={COLORS.primary} />
+    </TouchableOpacity>
+  ) : undefined;
+
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} testID="medicine-back">
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>{med.name}</Text>
-        {isOwner ? (
-          <TouchableOpacity onPress={openEdit} testID="medicine-edit-btn">
-            <Feather name="edit-2" size={20} color={COLORS.primary} />
-          </TouchableOpacity>
-        ) : <View style={{ width: 22 }} />}
-      </View>
+    <PageShell title={med.name} showBack scrollable={false} noPadding rightAction={EditBtn}>
 
       <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: SPACING.lg, paddingBottom: 120 }}>
         <View style={styles.hero}>
@@ -281,30 +272,12 @@ export default function MedicineDetail() {
           </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.white,
-  },
   headerTitle: { fontSize: 16, fontWeight: "800", color: COLORS.text, flex: 1, marginHorizontal: 12 },
   modalHeader: {
     flexDirection: "row",

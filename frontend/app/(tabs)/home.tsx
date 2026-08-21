@@ -8,9 +8,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   Platform,
-  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { PageShell } from "@/src/components/PageShell";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
@@ -36,8 +35,6 @@ const rupee = (n: number) =>
 export default function Home() {
   const router = useRouter();
   const { user } = useAuth();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [shopName, setShopName] = useState<string>("");
@@ -67,10 +64,9 @@ export default function Home() {
   const hasPending = (stats?.pending_credit_count ?? 0) > 0;
 
   return (
-    <SafeAreaView style={[s.root, isDesktop && s.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? s.desktopCol : { flex: 1 }}>
-      {/* Header — hidden on desktop; sidebar carries brand + identity */}
-      <View style={[s.header, isDesktop && { display: "none" }]}>
+    <PageShell scrollable={false} noPadding>
+      {/* Header — hidden on web; sidebar carries brand + identity */}
+      <View style={[s.header, Platform.OS === "web" && { display: "none" }]}>
         <View style={s.headerLeft}>
           <View style={s.logoMark}>
             <Feather name="activity" size={16} color={COLORS.primary} />
@@ -218,8 +214,7 @@ export default function Home() {
 
         {loading && !stats && <ActivityIndicator style={{ marginTop: 24 }} color={COLORS.primary} />}
       </ScrollView>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
@@ -235,16 +230,6 @@ const QUICK_TILES = [
 ];
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 920,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-
   header: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm,

@@ -7,10 +7,8 @@ import {
   TouchableOpacity,
   FlatList,
   RefreshControl,
-  Platform,
-  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { PageShell } from "@/src/components/PageShell";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { api } from "@/src/api";
@@ -32,8 +30,6 @@ type FilterId = (typeof BASE_FILTERS)[number]["id"];
 export default function Inventory() {
   const router = useRouter();
   const storeConfig = useStoreConfig();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const FILTERS = BASE_FILTERS.filter((f) => f.id !== "h" || storeConfig.schedule_h);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [query, setQuery] = useState("");
@@ -77,8 +73,7 @@ export default function Inventory() {
   });
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
+    <PageShell scrollable={false} noPadding>
       <View style={styles.header}>
         <Text style={styles.title}>Inventory</Text>
         <View style={{ flexDirection: "row", gap: SPACING.sm }}>
@@ -190,21 +185,11 @@ export default function Inventory() {
           </TouchableOpacity>
         )}
       />
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 960,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",

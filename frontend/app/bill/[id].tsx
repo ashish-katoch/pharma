@@ -11,9 +11,9 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { PageShell } from "@/src/components/PageShell";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as Print from "expo-print";
@@ -111,9 +111,6 @@ export default function BillDetail() {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [approvalPwd, setApprovalPwd] = useState("");
   const [approvalLoading, setApprovalLoading] = useState(false);
-
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
 
   const load = async () => {
     setLoading(true);
@@ -337,24 +334,20 @@ export default function BillDetail() {
 
   if (loading || !bill) {
     return (
-      <SafeAreaView style={styles.root} edges={["top"]}>
+      <PageShell title="Bill" showBack scrollable={false}>
         <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
-      </SafeAreaView>
+      </PageShell>
     );
   }
 
+  const ShareBtn = (
+    <TouchableOpacity onPress={sharePdf} testID="bill-share">
+      <Feather name="share" size={22} color={COLORS.primary} />
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top", "bottom"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} testID="bill-back">
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{bill.bill_no}</Text>
-        <TouchableOpacity onPress={sharePdf} testID="bill-share">
-          <Feather name="share" size={22} color={COLORS.primary} />
-        </TouchableOpacity>
-      </View>
+    <PageShell title={bill.bill_no} showBack scrollable={false} noPadding rightAction={ShareBtn}>
 
       <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: SPACING.md, paddingBottom: 120 }}>
         {bill.status === "cancelled" && (
@@ -647,8 +640,7 @@ export default function BillDetail() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
@@ -667,24 +659,6 @@ function Row({ label, value, tone, big, muted }: any) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.white,
-  },
-  headerTitle: { fontSize: 16, fontWeight: "800", color: COLORS.text },
   cancelBanner: {
     flexDirection: "row",
     alignItems: "center",

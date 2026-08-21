@@ -9,7 +9,7 @@ import {
   RefreshControl,
   Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { PageShell } from "@/src/components/PageShell";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Platform, useWindowDimensions } from "react-native";
@@ -389,8 +389,7 @@ export default function Reports() {
   ));
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
+    <PageShell scrollable={false} noPadding>
         <View style={styles.header}>
           <Text style={styles.title}>Reports</Text>
         </View>
@@ -707,8 +706,7 @@ export default function Reports() {
           ) : <BalanceSheetTab data={balanceSheetData} />
         ) : null}
       </ScrollView>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
@@ -1081,19 +1079,6 @@ function EmptyBlock({ icon, label, tone }: { icon: string; label: string; tone: 
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 1000,
-    alignSelf: "center",
-    backgroundColor: COLORS.white,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 2 },
-  },
   header: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: 8 },
   title: { fontSize: 26, fontWeight: "800", color: COLORS.text, letterSpacing: -0.5 },
   tabs: { paddingHorizontal: SPACING.lg, paddingVertical: 8, gap: 8 },

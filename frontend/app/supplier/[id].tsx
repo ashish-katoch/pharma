@@ -11,9 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
-  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { PageShell } from "@/src/components/PageShell";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
 import { Feather } from "@expo/vector-icons";
@@ -99,9 +98,6 @@ export default function SupplierDetail() {
   const [tab, setTab] = useState<"ledger" | "purchases">("ledger");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
-
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -135,16 +131,9 @@ export default function SupplierDetail() {
 
   if (loading && !supplier) {
     return (
-      <SafeAreaView style={styles.root} edges={["top"]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-            <Feather name="arrow-left" size={22} color={COLORS.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Supplier</Text>
-          <View style={{ width: 30 }} />
-        </View>
+      <PageShell title="Supplier" showBack scrollable={false}>
         <ActivityIndicator style={{ marginTop: 60 }} color={COLORS.primary} />
-      </SafeAreaView>
+      </PageShell>
     );
   }
 
@@ -166,18 +155,14 @@ export default function SupplierDetail() {
     return { ...row, balance: prev };
   });
 
+  const NewPurchaseBtn = (
+    <TouchableOpacity onPress={() => router.push("/purchase-new")} style={styles.addBtn}>
+      <Feather name="plus" size={16} color={COLORS.white} />
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>{supplier.name}</Text>
-        <TouchableOpacity onPress={() => router.push("/purchase-new")} style={styles.addBtn}>
-          <Feather name="plus" size={16} color={COLORS.white} />
-        </TouchableOpacity>
-      </View>
+    <PageShell title={supplier.name} showBack scrollable={false} noPadding rightAction={NewPurchaseBtn}>
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -408,23 +393,11 @@ export default function SupplierDetail() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, padding: SPACING.lg, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  headerTitle: { flex: 1, fontSize: 17, fontWeight: "700", color: COLORS.text },
   addBtn: { width: 32, height: 32, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   scroll: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 60 },
   infoCard: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.lg, alignItems: "center", gap: 6 },

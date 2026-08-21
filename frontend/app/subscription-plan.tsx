@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Platform, useWindowDimensions,
+  ActivityIndicator, Alert, Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { PageShell } from "@/src/components/PageShell";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { api } from "@/src/api";
@@ -54,8 +54,6 @@ function fmtLimit(key: keyof PlanFeatures, val: number | boolean): string {
 
 export default function SubscriptionPlanScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [data, setData] = useState<PlanResp | null>(null);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
@@ -102,17 +100,9 @@ export default function SubscriptionPlanScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-        <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-            <Feather name="arrow-left" size={22} color={COLORS.text} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Subscription Plan</Text>
-        </View>
+      <PageShell title="Subscription Plan" showBack scrollable={false}>
         <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
-        </View>
-      </SafeAreaView>
+      </PageShell>
     );
   }
 
@@ -120,14 +110,7 @@ export default function SubscriptionPlanScreen() {
   const allPlans = data?.all_plans ?? {};
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Subscription Plan</Text>
-      </View>
+    <PageShell title="Subscription Plan" showBack scrollable={false} noPadding>
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Current plan badge */}
@@ -211,27 +194,11 @@ export default function SubscriptionPlanScreen() {
           </Text>
         </View>
       </ScrollView>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: "row", alignItems: "center", gap: SPACING.sm,
-    padding: SPACING.lg, backgroundColor: COLORS.white,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
-  },
-  title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   scroll: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 40 },
   currentBadge: {
     flexDirection: "row", alignItems: "center", gap: SPACING.sm,

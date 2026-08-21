@@ -6,13 +6,12 @@ import {
   TouchableOpacity,
   Alert,
   Switch,
-  Platform,
-  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
 import { useLock } from "@/src/lock/LockProvider";
 
 const PAD = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"];
@@ -21,8 +20,6 @@ type Step = "menu" | "set-pin" | "confirm-pin";
 
 export default function AppLockSetup() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const { lockEnabled, hasPin, setPin, clearPin, toggleLock } = useLock();
   const [step, setStep] = useState<Step>("menu");
   const [pin1, setPin1] = useState("");
@@ -71,8 +68,7 @@ export default function AppLockSetup() {
 
   if (step === "set-pin" || step === "confirm-pin") {
     return (
-      <SafeAreaView style={[pinStyles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-        <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
+      <SafeAreaView style={pinStyles.root} edges={["top"]}>
         <View style={pinStyles.header}>
           <TouchableOpacity onPress={() => { setStep("menu"); setPin1(""); setPin2(""); setCurrent("pin1"); }}>
             <Feather name="x" size={24} color={COLORS.white} />
@@ -94,21 +90,12 @@ export default function AppLockSetup() {
             ))}
           </View>
         </View>
-        </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>App Lock</Text>
-      </View>
-
+    <PageShell title="App Lock" showBack scrollable={false}>
       <View style={styles.content}>
         <View style={styles.card}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: SPACING.md }}>
@@ -161,23 +148,11 @@ export default function AppLockSetup() {
           </Text>
         </View>
       </View>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, padding: SPACING.lg, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   content: { padding: SPACING.lg, gap: SPACING.md },
   card: { backgroundColor: COLORS.white, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, padding: SPACING.lg },
   cardTitle: { fontSize: 15, fontWeight: "700", color: COLORS.text },

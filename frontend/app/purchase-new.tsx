@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, ActivityIndicator, Alert, Modal,
-  KeyboardAvoidingView, Platform, FlatList, Image, useWindowDimensions,
+  KeyboardAvoidingView, Platform, FlatList, Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { PageShell } from "@/src/components/PageShell";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -33,8 +33,6 @@ type PurchaseLine = {
 
 export default function PurchaseNew() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [supplierId, setSupplierId] = useState("");
   const [supplierName, setSupplierName] = useState("");
@@ -230,14 +228,7 @@ export default function PurchaseNew() {
   const filteredSupps = suppliers.filter((s) => s.name.toLowerCase().includes(suppQ.toLowerCase()));
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>New Purchase</Text>
-      </View>
+    <PageShell title="New Purchase" showBack scrollable={false} noPadding>
 
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* Supplier */}
@@ -428,23 +419,11 @@ export default function PurchaseNew() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  header: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, padding: SPACING.lg, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   scroll: { padding: SPACING.lg, paddingBottom: 60, gap: SPACING.sm },
   sectionLabel: { fontSize: 10, fontWeight: "800", letterSpacing: 1.5, color: COLORS.textMuted, marginTop: 4, marginBottom: 2 },
   pickerRow: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, backgroundColor: COLORS.white, padding: SPACING.md, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border },
