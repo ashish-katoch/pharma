@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -28,6 +29,8 @@ type ScannedDevice = {
 
 export default function PrinterSettings() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
   const [scanning, setScanning] = useState(false);
   const [devices, setDevices] = useState<ScannedDevice[]>([]);
   const [savedId, setSavedId] = useState<string | null>(null);
@@ -71,7 +74,8 @@ export default function PrinterSettings() {
   }
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -134,12 +138,21 @@ export default function PrinterSettings() {
           </View>
         )}
       />
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, Platform, useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -54,6 +54,8 @@ function fmtLimit(key: keyof PlanFeatures, val: number | boolean): string {
 
 export default function SubscriptionPlanScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
   const [data, setData] = useState<PlanResp | null>(null);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
@@ -100,7 +102,8 @@ export default function SubscriptionPlanScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.root} edges={["top"]}>
+      <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+        <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
             <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -108,6 +111,7 @@ export default function SubscriptionPlanScreen() {
           <Text style={styles.title}>Subscription Plan</Text>
         </View>
         <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -116,7 +120,8 @@ export default function SubscriptionPlanScreen() {
   const allPlans = data?.all_plans ?? {};
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -206,12 +211,21 @@ export default function SubscriptionPlanScreen() {
           </Text>
         </View>
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   header: {
     flexDirection: "row", alignItems: "center", gap: SPACING.sm,
     padding: SPACING.lg, backgroundColor: COLORS.white,

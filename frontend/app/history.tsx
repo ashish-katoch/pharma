@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Platform } from "react-native";
+import { Platform, useWindowDimensions } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 import { listBills } from "@/src/repositories/BillingRepository";
@@ -56,6 +56,9 @@ export default function History() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [applied, setApplied] = useState<Filters>(EMPTY_FILTERS);
+
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
 
   const load = useCallback(async (f: Filters = EMPTY_FILTERS) => {
     setLoading(true);
@@ -138,7 +141,8 @@ export default function History() {
   const active = hasActiveFilters(applied);
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} testID="history-back">
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -309,12 +313,21 @@ export default function History() {
           }}
         />
       )}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",

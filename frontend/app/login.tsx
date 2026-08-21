@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -19,6 +20,8 @@ import { COLORS, RADIUS, SPACING } from "@/src/theme";
 export default function Login() {
   const router = useRouter();
   const { login, loginWithTotp } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -105,7 +108,9 @@ export default function Login() {
   return (
     <SafeAreaView style={s.root} edges={["top", "bottom"]}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={[s.scroll, isDesktop && s.scrollDesktop]} keyboardShouldPersistTaps="handled">
+          {/* Desktop: center content in a max-width column */}
+          <View style={isDesktop ? s.desktopCol : undefined}>
 
           {/* Brand */}
           <View style={s.brand}>
@@ -185,6 +190,7 @@ export default function Login() {
           </View>
 
           <Text style={s.footer}>Secure connection · v2.4.0</Text>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -203,6 +209,8 @@ function ErrorBox({ message }: { message: string }) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
   scroll: { flexGrow: 1, paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xxl, justifyContent: "center" },
+  scrollDesktop: { alignItems: "center", paddingHorizontal: SPACING.xl },
+  desktopCol: { width: "100%", maxWidth: 440 },
 
   brand: { alignItems: "center", marginTop: SPACING.xxl * 1.5, marginBottom: SPACING.xl, gap: SPACING.md },
   logoWrap: {
@@ -235,6 +243,13 @@ const s = StyleSheet.create({
     minHeight: 48,
   },
   inputIcon: { marginLeft: SPACING.md },
+  input: {
+    borderWidth: 1, borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surface,
+    minHeight: 48, paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm,
+    fontSize: 15, color: COLORS.text,
+  },
   inputWithIcon: {
     flex: 1, paddingHorizontal: SPACING.sm, paddingVertical: SPACING.sm,
     fontSize: 15, color: COLORS.text,

@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -49,6 +51,8 @@ function humanAction(action: string) {
 
 export default function AuditLogScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -99,7 +103,8 @@ export default function AuditLogScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -125,11 +130,20 @@ export default function AuditLogScreen() {
           }
         />
       )}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   root: { flex: 1, backgroundColor: COLORS.surface },
   header: {
     flexDirection: "row",

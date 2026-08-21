@@ -4,6 +4,7 @@ import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   TextInput, ActivityIndicator, Alert, Modal,
   KeyboardAvoidingView, Platform, ScrollView,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -34,6 +35,9 @@ export default function Customers() {
   const [editing, setEditing] = useState<Customer | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
 
   const load = useCallback(async (query = q) => {
     setLoading(true);
@@ -76,7 +80,8 @@ export default function Customers() {
   }
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.back}>
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -152,6 +157,7 @@ export default function Customers() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
+      </View>
     </SafeAreaView>
   );
 }
@@ -174,6 +180,14 @@ function Field({ label, value, onChange, keyboard, multiline }: { label: string;
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   header: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, padding: SPACING.lg, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   back: { padding: 4 },
   title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },

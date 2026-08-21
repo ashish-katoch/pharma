@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, ActivityIndicator, Alert, FlatList, Modal,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -118,6 +119,8 @@ function buildLabelHtml(med: Medicine, batch: Batch, count: number, shopName: st
 
 export default function BarcodeLabels() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
   const [medQ, setMedQ] = useState("");
   const [meds, setMeds] = useState<Medicine[]>([]);
   const [selectedMed, setSelectedMed] = useState<Medicine | null>(null);
@@ -174,7 +177,8 @@ export default function BarcodeLabels() {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -291,11 +295,20 @@ export default function BarcodeLabels() {
           </View>
         </View>
       </Modal>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   root: { flex: 1, backgroundColor: COLORS.surface },
   header: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, padding: SPACING.lg, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },

@@ -8,6 +8,7 @@ import {
   FlatList,
   ActivityIndicator,
   KeyboardAvoidingView,
+  useWindowDimensions,
   Platform,
   Modal,
   ScrollView,
@@ -55,6 +56,8 @@ export default function Billing() {
   const cart = useCart();
   const sync = useSync();
   const { user } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Medicine[]>([]);
   const [offline, setOffline] = useState(false);
@@ -353,7 +356,8 @@ export default function Billing() {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
@@ -1136,6 +1140,7 @@ export default function Billing() {
           </View>
         </View>
       </Modal>
+      </View>
     </SafeAreaView>
   );
 }
@@ -1159,6 +1164,14 @@ function Row({ label, value, tone, big, muted }: any) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 1080,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",

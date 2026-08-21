@@ -11,6 +11,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -45,6 +46,9 @@ export default function Settings() {
   const [pwModal, setPwModal] = useState(false);
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
   const [pwSaving, setPwSaving] = useState(false);
+
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -111,7 +115,8 @@ export default function Settings() {
   const readOnly = user?.role !== "owner";
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <ScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 100, gap: SPACING.lg }}>
         <Text style={styles.title}>Settings</Text>
 
@@ -405,6 +410,7 @@ export default function Settings() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
+      </View>
     </SafeAreaView>
   );
 }
@@ -453,6 +459,14 @@ function FieldRow({ label, value, onChange, readOnly, multiline, keyboardType, t
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   title: { fontSize: 26, fontWeight: "800", color: COLORS.text, letterSpacing: -0.5 },
   sectionLabel: {
     fontSize: 11,

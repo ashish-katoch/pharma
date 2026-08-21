@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   View, Text, StyleSheet, FlatList, ActivityIndicator,
-  TouchableOpacity, Alert,
+  TouchableOpacity, Alert, Platform, useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -47,6 +47,9 @@ export default function Shifts() {
   const [loading, setLoading] = useState(true);
   const [clocking, setClocking] = useState(false);
   const [elapsed, setElapsed] = useState("");
+
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -113,7 +116,8 @@ export default function Shifts() {
     .reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0);
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -223,12 +227,21 @@ export default function Shifts() {
           )}
         />
       )}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   header: {
     flexDirection: "row", alignItems: "center", gap: SPACING.sm,
     padding: SPACING.lg, backgroundColor: COLORS.white,

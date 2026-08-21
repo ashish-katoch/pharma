@@ -10,6 +10,8 @@ import {
   TextInput,
   Modal,
   ScrollView,
+  Platform,
+  useWindowDimensions,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { api } from "@/src/api";
@@ -29,6 +31,8 @@ type ExpiringBatch = {
 
 export default function BatchWriteoffScreen() {
   const { user } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
   const [batches, setBatches] = useState<ExpiringBatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(90);
@@ -134,7 +138,8 @@ export default function BatchWriteoffScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isDesktop && styles.containerDesktop]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <View style={styles.header}>
         <Text style={styles.title}>Expiry Write-Off</Text>
         <View style={styles.filterRow}>
@@ -167,6 +172,7 @@ export default function BatchWriteoffScreen() {
           contentContainerStyle={{ padding: SPACING.md }}
         />
       )}
+      </View>
 
       <Modal visible={!!selectedBatch} transparent animationType="slide">
         <View style={styles.overlay}>
@@ -224,6 +230,14 @@ export default function BatchWriteoffScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.surface },
+  containerDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   header: { padding: SPACING.md, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   title: { fontSize: 20, fontWeight: "700", color: COLORS.text, marginBottom: SPACING.sm },
   filterRow: { flexDirection: "row", gap: SPACING.xs },

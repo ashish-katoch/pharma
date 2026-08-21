@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -34,6 +36,8 @@ const rupee = (n: number) =>
 export default function Home() {
   const router = useRouter();
   const { user } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [shopName, setShopName] = useState<string>("");
@@ -63,7 +67,8 @@ export default function Home() {
   const hasPending = (stats?.pending_credit_count ?? 0) > 0;
 
   return (
-    <SafeAreaView style={s.root} edges={["top"]}>
+    <SafeAreaView style={[s.root, isDesktop && s.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? s.desktopCol : { flex: 1 }}>
       {/* Header */}
       <View style={s.header}>
         <View style={s.headerLeft}>
@@ -213,6 +218,7 @@ export default function Home() {
 
         {loading && !stats && <ActivityIndicator style={{ marginTop: 24 }} color={COLORS.primary} />}
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -230,6 +236,14 @@ const QUICK_TILES = [
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 920,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
 
   header: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
@@ -304,7 +318,8 @@ const s = StyleSheet.create({
 
   tileGrid: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm },
   tile: {
-    width: "48%", backgroundColor: COLORS.white,
+    flexBasis: "23%", flexGrow: 1, minWidth: 130,
+    backgroundColor: COLORS.white,
     borderWidth: 1, borderColor: COLORS.border,
     borderRadius: RADIUS.md, padding: SPACING.lg, gap: SPACING.sm,
   },

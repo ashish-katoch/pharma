@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -87,6 +88,9 @@ export default function SupplierDetail() {
   const [paying, setPaying] = useState(false);
   const [tab, setTab] = useState<"ledger" | "purchases">("ledger");
 
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -152,7 +156,8 @@ export default function SupplierDetail() {
   });
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -349,12 +354,21 @@ export default function SupplierDetail() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   header: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, padding: SPACING.lg, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: "700", color: COLORS.text },
   addBtn: { width: 32, height: 32, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },

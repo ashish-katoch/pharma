@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
@@ -6,8 +6,11 @@ import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
 export default function Screen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
   return (
-    <SafeAreaView style={s.root} edges={["top"]}>
+    <SafeAreaView style={[s.root, isDesktop && s.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? s.desktopCol : { flex: 1 }}>
       <View style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -22,12 +25,21 @@ export default function Screen() {
           <Text style={s.placeholderSub}>Coming soon.</Text>
         </View>
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm,

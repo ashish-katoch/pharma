@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, ActivityIndicator, Alert, Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -49,6 +50,9 @@ export default function EodClose() {
   const [loading, setLoading] = useState(true);
   const [closing, setClosing] = useState(false);
   const [alreadyClosed, setAlreadyClosed] = useState(false);
+
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
 
   useEffect(() => {
     async function load() {
@@ -139,7 +143,8 @@ export default function EodClose() {
   const cashDiff = preview ? parseFloat(cashActual || "0") - preview.cash_expected : 0;
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -238,6 +243,7 @@ export default function EodClose() {
           </>
         )}
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -262,6 +268,14 @@ function HistItem({ label, value, tone }: { label: string; value: string; tone?:
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   header: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, padding: SPACING.lg, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   scroll: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 60 },

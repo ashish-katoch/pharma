@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, ActivityIndicator, Alert, FlatList, Modal,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -35,6 +35,9 @@ export default function StockAdjust() {
   const [changeStr, setChangeStr] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
 
   useEffect(() => {
     if (!medQ.trim()) { setMedResults([]); return; }
@@ -96,7 +99,8 @@ export default function StockAdjust() {
   }
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => { if (step === "medicine") router.back(); else if (step === "batch") setStep("medicine"); else setStep("batch"); }} style={{ padding: 4 }}>
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -216,12 +220,21 @@ export default function StockAdjust() {
           </TouchableOpacity>
         </ScrollView>
       )}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   header: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, padding: SPACING.lg, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   stepsRow: { flexDirection: "row", justifyContent: "center", gap: SPACING.xl, padding: SPACING.md, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },

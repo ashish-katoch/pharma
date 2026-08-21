@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Alert, ActivityIndicator, Platform,
+  Alert, ActivityIndicator, Platform, useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -16,6 +16,8 @@ const RETENTION_OPTIONS = [12, 24, 36, 60, 84];
 
 export default function BackupScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
   const [shop, setShop] = useState<ShopResp | null>(null);
   const [loading, setLoading] = useState(true);
   const [backingUp, setBackingUp] = useState(false);
@@ -91,7 +93,8 @@ export default function BackupScreen() {
   const retention = shop?.data_retention_months ?? 60;
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -214,11 +217,20 @@ export default function BackupScreen() {
           </View>
         </ScrollView>
       )}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   root: { flex: 1, backgroundColor: COLORS.surface },
   header: {
     flexDirection: "row", alignItems: "center", gap: SPACING.sm,

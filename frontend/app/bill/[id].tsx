@@ -11,6 +11,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -110,6 +111,9 @@ export default function BillDetail() {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [approvalPwd, setApprovalPwd] = useState("");
   const [approvalLoading, setApprovalLoading] = useState(false);
+
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
 
   const load = async () => {
     setLoading(true);
@@ -340,7 +344,8 @@ export default function BillDetail() {
   }
 
   return (
-    <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top", "bottom"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} testID="bill-back">
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -642,6 +647,7 @@ export default function BillDetail() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      </View>
     </SafeAreaView>
   );
 }
@@ -661,6 +667,14 @@ function Row({ label, value, tone, big, muted }: any) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",

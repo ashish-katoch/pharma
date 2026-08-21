@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator,
-  TouchableOpacity,
+  TouchableOpacity, Platform, useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -68,6 +68,8 @@ function catIcon(c: string)  { return (CAT_ICONS[c] ?? "tag") as any; }
 
 export default function PnlBreakdown() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
   const today = currentMonth();
   const [month, setMonth] = useState(today);
   const [data, setData] = useState<PnlData | null>(null);
@@ -88,7 +90,8 @@ export default function PnlBreakdown() {
   const netProfit = data?.net_profit ?? data?.gross_profit ?? 0;
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
@@ -271,6 +274,7 @@ export default function PnlBreakdown() {
           </View>
         </ScrollView>
       )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -313,6 +317,14 @@ function _Kpi({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   root: { flex: 1, backgroundColor: COLORS.surface },
   header: {
     flexDirection: "row", alignItems: "center", gap: SPACING.sm,

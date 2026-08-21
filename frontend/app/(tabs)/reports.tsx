@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Platform } from "react-native";
+import { Platform, useWindowDimensions } from "react-native";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { api } from "@/src/api";
@@ -176,6 +176,8 @@ export default function Reports() {
   const [balanceSheetData, setBalanceSheetData] = useState<BalanceSheetResp | null>(null);
   const [exporting, setExporting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
 
   const changeDrugRegMonth = (m: string) => { setDrugRegData(null); setDrugRegMonth(m); };
   const changeGstMonth = (m: string) => { setGstData(null); setGstr1Data(null); setGstMonth(m); };
@@ -374,26 +376,33 @@ export default function Reports() {
   const isCustomersTab = tab === "customers";
   const isTrialBalanceTab = tab === "trialbalance";
 
-  return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Reports</Text>
-      </View>
+  const tabButtons = visibleTabs.map((t) => (
+    <TouchableOpacity
+      key={t.id}
+      testID={`reports-tab-${t.id}`}
+      style={[styles.tab, tab === t.id && styles.tabActive]}
+      onPress={() => setTab(t.id)}
+    >
+      <Feather name={t.icon as any} size={13} color={tab === t.id ? COLORS.white : COLORS.textSecondary} />
+      <Text style={[styles.tabText, tab === t.id && styles.tabTextActive]}>{t.label}</Text>
+    </TouchableOpacity>
+  ));
 
-      {/* Scrollable tab bar */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
-        {visibleTabs.map((t) => (
-          <TouchableOpacity
-            key={t.id}
-            testID={`reports-tab-${t.id}`}
-            style={[styles.tab, tab === t.id && styles.tabActive]}
-            onPress={() => setTab(t.id)}
-          >
-            <Feather name={t.icon as any} size={13} color={tab === t.id ? COLORS.white : COLORS.textSecondary} />
-            <Text style={[styles.tabText, tab === t.id && styles.tabTextActive]}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+  return (
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Reports</Text>
+        </View>
+
+        {/* Tab bar — desktop: flex-wrap row; mobile: horizontal scroll */}
+        {isDesktop ? (
+          <View style={styles.tabsDesktop}>{tabButtons}</View>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
+            {tabButtons}
+          </ScrollView>
+        )}
 
       {/* Expiring window chips */}
       {tab === "expiring" && (
@@ -535,7 +544,7 @@ export default function Reports() {
 
       {/* Inventory export (expiring / low stock) */}
       {(tab === "expiring" || tab === "low") && (
-        <TouchableOpacity style={[styles.exportBtn, { alignSelf: "flex-end", marginHorizontal: SPACING.lg }]} onPress={exportInventory} disabled={exporting}>
+        <TouchableOpacity style={[styles.exportBtn, styles.exportBtnInline]} onPress={exportInventory} disabled={exporting}>
           {exporting ? <ActivityIndicator color={COLORS.white} size="small" /> : <Feather name="download" size={14} color={COLORS.white} />}
           <Text style={styles.exportBtnText}>Export CSV</Text>
         </TouchableOpacity>
@@ -698,6 +707,7 @@ export default function Reports() {
           ) : <BalanceSheetTab data={balanceSheetData} />
         ) : null}
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -1072,9 +1082,31 @@ function EmptyBlock({ icon, label, tone }: { icon: string; label: string; tone: 
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 1000,
+    alignSelf: "center",
+    backgroundColor: COLORS.white,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
+  },
   header: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: 8 },
   title: { fontSize: 26, fontWeight: "800", color: COLORS.text, letterSpacing: -0.5 },
   tabs: { paddingHorizontal: SPACING.lg, paddingVertical: 8, gap: 8 },
+  tabsDesktop: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: 10,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.white,
+  },
   tab: {
     flexDirection: "row", gap: 5, alignItems: "center",
     paddingHorizontal: SPACING.md, paddingVertical: 9,
@@ -1093,6 +1125,7 @@ const styles = StyleSheet.create({
   monthArrow: { padding: 6 },
   monthLabel: { fontSize: 16, fontWeight: "800", color: COLORS.text, minWidth: 180, textAlign: "center" },
   exportBtn: { flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.primary, marginHorizontal: SPACING.lg, marginBottom: SPACING.sm, paddingVertical: 10, borderRadius: RADIUS.md, minHeight: 42 },
+  exportBtnInline: { alignSelf: "flex-end", paddingHorizontal: SPACING.lg, marginHorizontal: SPACING.lg },
   exportBtnText: { color: COLORS.white, fontWeight: "700", fontSize: 13 },
   card: { padding: SPACING.md, backgroundColor: COLORS.white, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border },
   cardTitle: { fontSize: 15, fontWeight: "700", color: COLORS.text },

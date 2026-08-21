@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Alert, ActivityIndicator, TextInput, Platform,
+  Alert, ActivityIndicator, TextInput, Platform, useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -39,6 +39,8 @@ type ImportResp = { ok: boolean; purchase_id: string; lines_imported: number; to
 
 export default function ScanInvoiceScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResp | null>(null);
   const [selectedLines, setSelectedLines] = useState<Set<number>>(new Set());
@@ -230,7 +232,8 @@ export default function ScanInvoiceScreen() {
   const allMatched = importLines.length > 0 && importLines.every((l) => l.matched);
 
   return (
-    <SafeAreaView style={styles.root} edges={["top"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => {
           if (step !== "upload") { setStep("upload"); return; }
@@ -526,12 +529,21 @@ export default function ScanInvoiceScreen() {
           </>
         )}
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   header: {
     flexDirection: "row", alignItems: "center", gap: SPACING.sm,
     padding: SPACING.lg, backgroundColor: COLORS.white,

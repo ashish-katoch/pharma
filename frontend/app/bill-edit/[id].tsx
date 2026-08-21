@@ -9,6 +9,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -65,6 +66,9 @@ export default function BillEdit() {
   const [lines, setLines] = useState<EditLine[]>([]);
   const [paymentMode, setPaymentMode] = useState("cash");
   const [reason, setReason] = useState("");
+
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
 
   useEffect(() => {
     (async () => {
@@ -155,7 +159,8 @@ export default function BillEdit() {
   const editCount = bill.edit_count ?? 0;
 
   return (
-    <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top", "bottom"]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} testID="bill-edit-back">
@@ -275,12 +280,21 @@ export default function BillEdit() {
           )}
         </TouchableOpacity>
       </View>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",

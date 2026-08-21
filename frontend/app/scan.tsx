@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -44,6 +45,8 @@ type Toast = { text: string; tone: "success" | "warning" | "danger" } | null;
 
 export default function Scan() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
   const params = useLocalSearchParams<{ mode?: Mode }>();
   const mode: Mode = params.mode === "return" ? "return" : params.mode === "bill" ? "bill" : "cart";
   const cart = useCart();
@@ -170,7 +173,8 @@ export default function Scan() {
         : COLORS.danger;
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, isDesktop && styles.rootDesktop]}>
+      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
       <CameraView
         style={StyleSheet.absoluteFill}
         facing="back"
@@ -238,12 +242,21 @@ export default function Scan() {
           </Text>
         )}
       </SafeAreaView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#000" },
+  rootDesktop: { backgroundColor: "#F0F2F8" },
+  desktopCol: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 900,
+    alignSelf: "center",
+    backgroundColor: COLORS.surface,
+  },
   center: {
     flex: 1,
     backgroundColor: "#0B1220",
