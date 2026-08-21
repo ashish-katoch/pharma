@@ -73,7 +73,7 @@ export default function MedicineDetail() {
         const [m, b, ph] = await Promise.all([
           api<Medicine>(`/medicines/${id}`),
           api<Batch[]>(`/batches?medicine_id=${id}`),
-          api<PriceHistory[]>(`/medicines/${id}/price-history`).catch(() => []),
+          api<PriceHistory[]>(`/medicines/${id}/mrp-history`).catch(() => []),
         ]);
         setMed(m);
         setBatches(b);
@@ -110,6 +110,7 @@ export default function MedicineDetail() {
       });
       setMed(updated);
       setEditOpen(false);
+      api<PriceHistory[]>(`/medicines/${id}/mrp-history`).then(setPriceHistory).catch(() => {});
     } catch (e: any) {
       alertMsg("Failed", e?.message || "Could not save");
     } finally {
