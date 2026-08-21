@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pharma.database import get_db
 from pharma.models.batch import Batch
 from pharma.models.bill import Bill, BillLine
+from pharma.models.customer import Customer
 from pharma.models.misc import Doctor, Expense
 from pharma.models.purchase import Purchase
 from pharma.models.supplier import Supplier
@@ -19,6 +20,7 @@ from pharma.schemas.analytics import (
     CashflowRangeOut,
     CustomerAnalyticsOut,
     DoctorAnalyticsOut,
+    DoctorBillOut,
     DoctorRevenueOut,
     PnlDetailOut,
     PnlOut,
@@ -154,6 +156,33 @@ async def doctor_revenue(month: str = Query(), shop_id: uuid.UUID = Depends(get_
     return [
         {"doctor_id": did, "doctor_name": name, "bill_count": int(count), "revenue": float(revenue)}
         for did, name, count, revenue in rows
+    ]
+
+
+@router.get("/doctor-bills", response_model=list[DoctorBillOut])
+async def doctor_bills(
+    doctor_id: uuid.UUID = Query(),
+    month: str = Query(),
+    shop_id: uuid.UUID = Depends(get_current_shop),
+    db: AsyncSession = Depends(get_db),
+):
+    year, mon = _month_bounds(month)
+    stmt = (
+        select(Bill.id, Bill.bill_no, Bill.total, Bill.created_at, Customer.name)
+        .outerjoin(Customer, Bill.customer_id == Customer.id)
+        .where(
+            Bill.shop_id == shop_id,
+            Bill.doctor_id == doctor_id,
+            Bill.status == "active",
+            extract("year", Bill.created_at) == year,
+            extract("month", Bill.created_at) == mon,
+        )
+        .order_by(Bill.created_at.desc())
+    )
+    rows = (await db.execute(stmt)).all()
+    return [
+        {"id": bid, "bill_no": bn, "total": float(tot), "created_at": ca.isoformat(), "customer_name": cn}
+        for bid, bn, tot, ca, cn in rows
     ]
 
 

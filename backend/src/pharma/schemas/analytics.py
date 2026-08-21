@@ -55,6 +55,14 @@ class DoctorRevenueOut(BaseModel):
     revenue: float
 
 
+class DoctorBillOut(BaseModel):
+    id: uuid.UUID
+    bill_no: str
+    customer_name: str | None
+    total: float
+    created_at: str
+
+
 class PurchaseAnalyticsOut(BaseModel):
     month: str
     total_purchases: float

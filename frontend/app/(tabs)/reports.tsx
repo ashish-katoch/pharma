@@ -702,7 +702,7 @@ export default function Reports() {
           !isOwner ? <OwnerOnlyBlock /> :
           !doctorData || doctorData.length === 0 ? (
             <EmptyBlock icon="user-check" label={`No doctor referral data for ${monthLabel(doctorMonth)}`} tone="muted" />
-          ) : <DoctorsTab data={doctorData} />
+          ) : <DoctorsTab data={doctorData} month={doctorMonth} />
         ) : tab === "purchases" ? (
           !purchaseData ? (
             <EmptyBlock icon="shopping-cart" label={`No purchase data for ${monthLabel(purchaseMonth)}`} tone="muted" />
@@ -926,7 +926,8 @@ function PnlTab({ data }: { data: PnlData }) {
   );
 }
 
-function DoctorsTab({ data }: { data: DoctorStat[] }) {
+function DoctorsTab({ data, month }: { data: DoctorStat[]; month: string }) {
+  const router = useRouter();
   const maxRevenue = Math.max(...data.map((d) => d.revenue), 1);
   const totalRevenue = data.reduce((s, d) => s + d.revenue, 0);
   return (
@@ -937,16 +938,24 @@ function DoctorsTab({ data }: { data: DoctorStat[] }) {
         <KpiCard label="Top Doctor" value={data[0]?.doctor_name?.split(" ")[0] ?? "—"} />
       </View>
       {data.map((d, i) => (
-        <View key={d.doctor_id ?? i} style={styles.card}>
+        <TouchableOpacity
+          key={d.doctor_id ?? i}
+          style={styles.card}
+          onPress={() => router.push({ pathname: "/doctor-bills", params: { doctor_id: d.doctor_id, doctor_name: d.doctor_name, month } } as any)}
+          activeOpacity={0.75}
+        >
           <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
             <Text style={styles.cardTitle} numberOfLines={1}>{d.doctor_name}</Text>
-            <Text style={[styles.cardTitle, { color: COLORS.primary }]}>{rupee(d.revenue)}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Text style={[styles.cardTitle, { color: COLORS.primary }]}>{rupee(d.revenue)}</Text>
+              <Feather name="chevron-right" size={14} color={COLORS.textMuted} />
+            </View>
           </View>
-          <Text style={styles.cardMeta}>{d.bill_count} bills</Text>
+          <Text style={styles.cardMeta}>{d.bill_count} bills · tap to see</Text>
           <View style={{ height: 4, backgroundColor: COLORS.border, borderRadius: 2, marginTop: 6 }}>
             <View style={{ height: 4, width: `${(d.revenue / maxRevenue) * 100}%`, backgroundColor: COLORS.primary, borderRadius: 2 }} />
           </View>
-        </View>
+        </TouchableOpacity>
       ))}
     </>
   );

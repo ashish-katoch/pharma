@@ -456,6 +456,14 @@ export default function BillDetail() {
           ))}
           <View style={{ height: 1, backgroundColor: COLORS.border, marginVertical: 6 }} />
           <Row label="GRAND TOTAL" value={rupee(bill.grand_total)} big />
+          {bill.customer_name ? (
+            <View style={styles.loyaltyEarned}>
+              <Feather name="star" size={13} color="#D97706" />
+              <Text style={styles.loyaltyEarnedText}>
+                {Math.floor(bill.grand_total)} loyalty points earned
+              </Text>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -746,6 +754,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
+  loyaltyEarned: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  loyaltyEarnedText: { fontSize: 13, fontWeight: "700", color: "#92400E" },
   bottomBar: {
     flexDirection: "row",
     gap: SPACING.sm,
