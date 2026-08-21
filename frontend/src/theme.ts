@@ -1,3 +1,6 @@
+import { Platform } from "react-native";
+
+
 export const COLORS = {
   // base
   white: "#FFFFFF",
@@ -63,6 +66,61 @@ export const FONTS = {
   medium: "System",
   semibold: "System",
   bold: "System",
+} as const;
+
+/**
+ * TYPE — a small, consistent type scale for the whole app.
+ * Use these instead of hardcoding fontSize/fontWeight/lineHeight per screen so
+ * headings and body copy stay consistent across the product. Spread into a
+ * Text style, e.g. `style={[TYPE.h2, { color: COLORS.text }]}`.
+ */
+export const TYPE = {
+  // Big numbers / hero figures
+  display: { fontSize: 34, fontWeight: "800", lineHeight: 40, letterSpacing: -0.8 },
+  // Page + section titles
+  h1: { fontSize: 24, fontWeight: "800", lineHeight: 30, letterSpacing: -0.5 },
+  h2: { fontSize: 20, fontWeight: "700", lineHeight: 26, letterSpacing: -0.3 },
+  h3: { fontSize: 17, fontWeight: "700", lineHeight: 23, letterSpacing: -0.2 },
+  // Emphasis / list titles
+  title: { fontSize: 15, fontWeight: "600", lineHeight: 21, letterSpacing: -0.1 },
+  // Body
+  body: { fontSize: 15, fontWeight: "400", lineHeight: 22 },
+  bodyMedium: { fontSize: 15, fontWeight: "500", lineHeight: 22 },
+  bodySmall: { fontSize: 13, fontWeight: "400", lineHeight: 19 },
+  // Supporting
+  label: { fontSize: 13, fontWeight: "600", lineHeight: 18, letterSpacing: -0.05 },
+  caption: { fontSize: 12, fontWeight: "500", lineHeight: 16 },
+  // ALL-CAPS section eyebrows
+  overline: { fontSize: 10, fontWeight: "800", lineHeight: 14, letterSpacing: 1.4 },
+} as const;
+
+/**
+ * SHADOWS — subtle, cross-platform elevation tokens. Web uses boxShadow;
+ * native uses shadow props / elevation. Spread into a style: `[card, SHADOWS.sm]`.
+ */
+const elevation = (
+  y: number,
+  blur: number,
+  opacity: number,
+  radius: number,
+  elev: number,
+) =>
+  Platform.select({
+    web: { boxShadow: `0 ${y}px ${blur}px rgba(16, 24, 64, ${opacity})` },
+    default: {
+      shadowColor: "#101840",
+      shadowOffset: { width: 0, height: y },
+      shadowOpacity: opacity,
+      shadowRadius: radius,
+      elevation: elev,
+    },
+  }) as object;
+
+export const SHADOWS = {
+  none: {},
+  sm: elevation(1, 3, 0.06, 2, 1),
+  md: elevation(4, 12, 0.08, 6, 3),
+  lg: elevation(10, 24, 0.12, 12, 8),
 } as const;
 
 export function expiryTone(expiry: string): { bg: string; fg: string; label: string } {

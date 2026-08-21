@@ -43,10 +43,11 @@ export default function Home() {
     setLoading(true);
     try {
       const [s, shop] = await Promise.all([
-        api<Stats>("/stats/today"),
+        api<Stats & { total_sales?: number }>("/stats/today"),
         api<{ name: string }>("/shop"),
       ]);
-      setStats(s);
+      // Backend returns `total_sales`; normalize to the `sales_total` field the UI reads.
+      setStats({ ...s, sales_total: s.sales_total ?? s.total_sales ?? 0 });
       setShopName(shop.name);
     } catch {
       /* ignore */
