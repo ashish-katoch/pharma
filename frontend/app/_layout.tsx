@@ -1,7 +1,7 @@
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { LogBox } from "react-native";
+import { LogBox, Platform, View, useWindowDimensions } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
@@ -14,6 +14,7 @@ import { DbProvider } from "@/src/db/DbProvider";
 import { LockProvider, useLock } from "@/src/lock/LockProvider";
 import { StoreConfigProvider } from "@/src/storeConfig";
 import { LockScreen } from "@/src/lock/LockScreen";
+import { DesktopSidebar } from "@/src/components/DesktopSidebar";
 import { setupNotificationHandler, registerPushToken } from "@/src/notifications";
 import * as Sentry from "@sentry/react-native";
 
@@ -43,12 +44,24 @@ function PushRegistrar() {
   return null;
 }
 
+const AUTH_PATHS = ["/", "/login", "/welcome", "/otp", "/forgot-password", "/onboarding-store", "/stay-notified", "/language"];
+
 function AppContent() {
   const { locked } = useLock();
+  const { user } = useAuth();
+  const pathname = usePathname();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
+  const isAuthScreen = AUTH_PATHS.some((p) => pathname === p);
+  const showSidebar = isDesktop && !!user && !isAuthScreen;
+
   return (
     <>
       <PushRegistrar />
       <StatusBar style="dark" />
+      <View style={{ flex: 1, flexDirection: "row" }}>
+        {showSidebar && <DesktopSidebar />}
+        <View style={{ flex: 1 }}>
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#F8FAFC" } }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="login" />
@@ -141,6 +154,8 @@ function AppContent() {
         <Stack.Screen name="export-config" />
         <Stack.Screen name="regulatory-vault" />
       </Stack>
+        </View>
+      </View>
       {locked && <LockScreen />}
     </>
   );
