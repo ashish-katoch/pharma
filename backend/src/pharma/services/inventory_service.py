@@ -1,10 +1,12 @@
 import uuid
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from pharma.models.batch import Batch
 from pharma.models.purchase import Purchase, PurchaseLine
 from pharma.models.bill import StockLedgerEntry
+from pharma.models.supplier import SupplierPrice
 from pharma.schemas.purchase import PurchaseCreateIn
 
 
@@ -50,6 +52,24 @@ async def create_purchase(db: AsyncSession, shop_id: uuid.UUID, payload: Purchas
             )
         )
         total += line.qty * line.purchase_price
+
+        # Upsert supplier price catalog so future purchases can show a hint
+        existing_price = (await db.execute(
+            select(SupplierPrice).where(
+                SupplierPrice.shop_id == shop_id,
+                SupplierPrice.supplier_id == payload.supplier_id,
+                SupplierPrice.medicine_id == line.medicine_id,
+            )
+        )).scalar_one_or_none()
+        if existing_price:
+            existing_price.purchase_price = line.purchase_price
+        else:
+            db.add(SupplierPrice(
+                shop_id=shop_id,
+                supplier_id=payload.supplier_id,
+                medicine_id=line.medicine_id,
+                purchase_price=line.purchase_price,
+            ))
 
     purchase.total = round(total, 2)
     await db.commit()

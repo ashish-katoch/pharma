@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pharma.database import get_db
 from pharma.exceptions import NotFoundError
 from pharma.models.purchase import Purchase, SupplierReturn
-from pharma.models.supplier import Supplier, SupplierPayment
+from pharma.models.supplier import Supplier, SupplierPayment, SupplierPrice
 from pharma.schemas.ops import OkOut
 from pharma.schemas.supplier import SupplierIn, SupplierLedgerOut, SupplierOut, SupplierPaymentIn, SupplierPaymentOut
 from pharma.security import get_current_shop, require_owner
@@ -169,3 +169,17 @@ async def get_supplier_ledger(
         ),
         "entries": entries,
     }
+
+
+@router.get("/{supplier_id}/prices")
+async def get_supplier_prices(
+    supplier_id: uuid.UUID,
+    shop_id: uuid.UUID = Depends(get_current_shop),
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = select(SupplierPrice).where(
+        SupplierPrice.shop_id == shop_id,
+        SupplierPrice.supplier_id == supplier_id,
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+    return [{"medicine_id": str(r.medicine_id), "purchase_price": float(r.purchase_price)} for r in rows]
