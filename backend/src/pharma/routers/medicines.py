@@ -8,10 +8,10 @@ from pharma.audit import write_audit
 from pharma.database import get_db
 from pharma.exceptions import NotFoundError
 from pharma.models.batch import Batch
-from pharma.models.medicine import Medicine
+from pharma.models.medicine import Medicine, MrpHistory
 from pharma.models.user import User
 from pharma.schemas.medicine import MedicineIn, MedicineOut, MedicineUpdateIn
-from pharma.schemas.ops import OkOut, PriceHistoryEntryOut
+from pharma.schemas.ops import MrpHistoryEntryOut, OkOut, PriceHistoryEntryOut
 from pharma.security import get_current_shop, get_current_user, require_owner
 
 router = APIRouter(prefix="/medicines", tags=["medicines"])
@@ -70,6 +70,17 @@ async def price_history(medicine_id: uuid.UUID, shop_id: uuid.UUID = Depends(get
     return [{"purchase_price": float(pp), "selling_price": float(sp), "recorded_at": ca.isoformat()} for pp, sp, ca in rows]
 
 
+@router.get("/{medicine_id}/mrp-history", response_model=list[MrpHistoryEntryOut])
+async def mrp_history(medicine_id: uuid.UUID, shop_id: uuid.UUID = Depends(get_current_shop), db: AsyncSession = Depends(get_db)):
+    stmt = (
+        select(MrpHistory)
+        .where(MrpHistory.shop_id == shop_id, MrpHistory.medicine_id == medicine_id)
+        .order_by(MrpHistory.created_at.desc())
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+    return [{"old_mrp": float(r.old_mrp), "new_mrp": float(r.new_mrp), "changed_by": r.changed_by, "changed_at": r.created_at.isoformat()} for r in rows]
+
+
 @router.get("/{medicine_id}", response_model=MedicineOut)
 async def get_medicine(medicine_id: uuid.UUID, shop_id: uuid.UUID = Depends(get_current_shop), db: AsyncSession = Depends(get_db)):
     med = await db.get(Medicine, medicine_id)
@@ -106,6 +117,14 @@ async def update_medicine(
     if not med or med.shop_id != shop_id:
         raise NotFoundError("Medicine not found")
     updates = payload.model_dump(exclude_unset=True)
+    if "mrp" in updates and float(updates["mrp"]) != float(med.mrp):
+        db.add(MrpHistory(
+            shop_id=shop_id,
+            medicine_id=med.id,
+            old_mrp=med.mrp,
+            new_mrp=updates["mrp"],
+            changed_by=user.email,
+        ))
     for field, value in updates.items():
         setattr(med, field, value)
     await write_audit(db, shop_id, user.email, "update", "medicine", str(med.id), updates)

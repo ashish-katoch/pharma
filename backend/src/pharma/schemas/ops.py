@@ -171,6 +171,13 @@ class PriceHistoryEntryOut(BaseModel):
     recorded_at: str
 
 
+class MrpHistoryEntryOut(BaseModel):
+    old_mrp: float
+    new_mrp: float
+    changed_by: str
+    changed_at: str
+
+
 class FileUploadOut(BaseModel):
     file_id: str
 

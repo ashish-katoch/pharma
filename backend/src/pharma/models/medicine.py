@@ -8,6 +8,21 @@ from pharma.database import Base
 from pharma.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 
+class MrpHistory(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Records each MRP change made to a medicine via PUT /medicines/{id}."""
+    __tablename__ = "mrp_history"
+
+    shop_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("shops.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    medicine_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("medicines.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    old_mrp: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    new_mrp: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    changed_by: Mapped[str] = mapped_column(String(255), nullable=False)
+
+
 class Medicine(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "medicines"
 
