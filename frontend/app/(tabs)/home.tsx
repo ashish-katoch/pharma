@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { PageShell } from "@/src/components/PageShell";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -35,6 +36,8 @@ const rupee = (n: number) =>
 export default function Home() {
   const router = useRouter();
   const { user } = useAuth();
+  const { width } = useWindowDimensions();
+  const isDesktop = Platform.OS === "web" && width >= 768;
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [shopName, setShopName] = useState<string>("");
@@ -86,11 +89,11 @@ export default function Home() {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero Sales Card */}
-        <View style={s.heroCard}>
+        <View style={[s.heroCard, !isDesktop && { padding: SPACING.lg }]}>
           <View style={s.heroTop}>
-            <View>
-              <Text style={s.heroLabel}>TODAY'S SALES</Text>
-              <Text style={s.heroAmount} testID="home-today-sales">
+            <View style={{ flex: 1 }}>
+              <Text style={s.heroLabel}>{"TODAY'S SALES"}</Text>
+              <Text style={[s.heroAmount, { fontSize: isDesktop ? 38 : 30 }]} testID="home-today-sales" numberOfLines={1} adjustsFontSizeToFit>
                 {loading ? "…" : rupee(stats?.sales_total ?? 0)}
               </Text>
             </View>
@@ -149,7 +152,7 @@ export default function Home() {
           onPress={() => router.push("/(tabs)/billing")}
         >
           <View style={s.newBillIconWrap}>
-            <Feather name="plus" size={24} color="#fff" />
+            <Feather name="plus" size={22} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={s.newBillTitle}>New Bill</Text>
@@ -170,7 +173,7 @@ export default function Home() {
               testID={t.testID}
             >
               <View style={s.tileIcon}>
-                <Feather name={t.icon as any} size={22} color={COLORS.primary} />
+                <Feather name={t.icon as any} size={19} color={COLORS.primary} />
               </View>
               <Text style={s.tileLabel}>{t.label}</Text>
             </TouchableOpacity>
@@ -260,7 +263,7 @@ const s = StyleSheet.create({
   },
   heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   heroLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 1.5, color: COLORS.inversePrimary, marginBottom: 4 },
-  heroAmount: { fontSize: 40, fontWeight: "900", color: COLORS.textInverse, letterSpacing: -1 },
+  heroAmount: { fontSize: 30, fontWeight: "900", color: COLORS.textInverse, letterSpacing: -0.8 },
   wowBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
     paddingHorizontal: SPACING.sm, paddingVertical: 4, borderRadius: RADIUS.pill,
@@ -282,48 +285,48 @@ const s = StyleSheet.create({
   kpiCardDanger:  { borderColor: COLORS.danger },
   kpiCardWarning: { borderColor: COLORS.warning },
   kpiCardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  kpiCardLabel: { fontSize: 9, fontWeight: "800", letterSpacing: 1.2, color: COLORS.textMuted },
-  kpiIcon: { width: 28, height: 28, borderRadius: RADIUS.pill, alignItems: "center", justifyContent: "center" },
-  kpiCardValue: { fontSize: 20, fontWeight: "800", color: COLORS.text, marginTop: 2 },
+  kpiCardLabel: { fontSize: 9, fontWeight: "800", letterSpacing: 0.6, color: COLORS.textMuted },
+  kpiIcon: { width: 26, height: 26, borderRadius: RADIUS.pill, alignItems: "center", justifyContent: "center" },
+  kpiCardValue: { fontSize: 19, fontWeight: "800", color: COLORS.text, marginTop: 2 },
   kpiCardSub: { fontSize: 11, color: COLORS.textMuted },
 
   newBillBtn: {
     backgroundColor: COLORS.primaryContainer,
-    borderRadius: RADIUS.lg, padding: SPACING.lg,
+    borderRadius: RADIUS.lg, padding: SPACING.md,
     flexDirection: "row", alignItems: "center", gap: SPACING.md,
   },
   newBillIconWrap: {
-    width: 44, height: 44, borderRadius: RADIUS.md,
+    width: 40, height: 40, borderRadius: RADIUS.md,
     backgroundColor: "rgba(255,255,255,0.18)",
     alignItems: "center", justifyContent: "center",
   },
-  newBillTitle: { color: "#fff", fontSize: 18, fontWeight: "800" },
+  newBillTitle: { color: "#fff", fontSize: 16, fontWeight: "800" },
   newBillSub: { color: COLORS.primaryFixed, fontSize: 12, marginTop: 1 },
 
-  sectionLabel: { fontSize: 10, fontWeight: "800", letterSpacing: 1.5, color: COLORS.textMuted, marginTop: SPACING.xs },
+  sectionLabel: { fontSize: 10, fontWeight: "800", letterSpacing: 1.4, color: COLORS.textMuted, marginTop: SPACING.xs },
 
   tileGrid: { flexDirection: "row", flexWrap: "wrap", gap: SPACING.sm },
   tile: {
-    flexBasis: "23%", flexGrow: 1, minWidth: 130,
+    flexBasis: "22%", flexGrow: 1, minWidth: 104,
     backgroundColor: COLORS.white,
     borderWidth: 1, borderColor: COLORS.border,
-    borderRadius: RADIUS.md, padding: SPACING.lg, gap: SPACING.sm,
+    borderRadius: RADIUS.md, padding: SPACING.md, gap: SPACING.sm,
   },
   tileIcon: {
-    width: 40, height: 40, borderRadius: RADIUS.sm,
+    width: 34, height: 34, borderRadius: RADIUS.sm,
     backgroundColor: COLORS.primaryFixed,
     alignItems: "center", justifyContent: "center",
   },
-  tileLabel: { fontSize: 14, fontWeight: "700", color: COLORS.text },
+  tileLabel: { fontSize: 13, fontWeight: "700", color: COLORS.text },
 
   alertsRow: { flexDirection: "row", gap: SPACING.md },
   alertCard: {
     flex: 1, backgroundColor: COLORS.white,
     borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border,
-    padding: SPACING.lg, gap: 3,
+    padding: SPACING.md, gap: 3,
   },
-  alertIcon: { width: 36, height: 36, borderRadius: RADIUS.pill, alignItems: "center", justifyContent: "center", marginBottom: 4 },
-  alertCount: { fontSize: 28, fontWeight: "900", letterSpacing: -0.5 },
+  alertIcon: { width: 32, height: 32, borderRadius: RADIUS.pill, alignItems: "center", justifyContent: "center", marginBottom: 4 },
+  alertCount: { fontSize: 24, fontWeight: "900", letterSpacing: -0.5 },
   alertLabel: { fontSize: 13, fontWeight: "700", color: COLORS.text },
   alertSub: { fontSize: 11, color: COLORS.textSecondary },
 });
