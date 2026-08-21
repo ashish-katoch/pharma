@@ -16,6 +16,7 @@ from pharma.schemas.analytics import (
     AccountBalanceOut,
     BalanceSheetLineOut,
     CashflowOut,
+    CashflowRangeOut,
     CustomerAnalyticsOut,
     DoctorAnalyticsOut,
     DoctorRevenueOut,
@@ -176,18 +177,67 @@ async def balance_sheet(as_of: date = Query(), shop_id: uuid.UUID = Depends(get_
     return [{"account": acc, "balance": float(bal)} for acc, bal in rows]
 
 
-@router.get("/cashflow", response_model=CashflowOut)
-async def cashflow(month: str = Query(), shop_id: uuid.UUID = Depends(get_current_shop), db: AsyncSession = Depends(get_db)):
-    year, mon = _month_bounds(month)
-    inflow_stmt = select(func.coalesce(func.sum(Bill.total), 0)).where(
-        Bill.shop_id == shop_id, Bill.status == "active", extract("year", Bill.created_at) == year, extract("month", Bill.created_at) == mon
+@router.get("/cashflow", response_model=CashflowRangeOut)
+async def cashflow(
+    date_from: str = Query(),
+    date_to: str = Query(),
+    mode: str = Query(default="all"),
+    shop_id: uuid.UUID = Depends(get_current_shop),
+    db: AsyncSession = Depends(get_db),
+):
+    from datetime import date as date_type, timedelta
+
+    d_from = date_type.fromisoformat(date_from)
+    d_to = date_type.fromisoformat(date_to)
+
+    # Build all calendar dates in range
+    all_dates = []
+    cur = d_from
+    while cur <= d_to:
+        all_dates.append(cur)
+        cur += timedelta(days=1)
+
+    # Bills: day → cash_in (optionally filtered by payment mode)
+    cash_modes = {"cash"}
+    bank_modes = {"upi", "card", "bank", "cheque", "neft", "rtgs"}
+
+    bill_stmt = select(
+        func.date(Bill.created_at).label("day"),
+        func.coalesce(func.sum(Bill.total), 0).label("total"),
+    ).where(
+        Bill.shop_id == shop_id,
+        Bill.status == "active",
+        func.date(Bill.created_at) >= d_from,
+        func.date(Bill.created_at) <= d_to,
     )
-    outflow_stmt = select(func.coalesce(func.sum(Expense.amount), 0)).where(
-        Expense.shop_id == shop_id, extract("year", Expense.expense_date) == year, extract("month", Expense.expense_date) == mon
-    )
-    inflow = float((await db.execute(inflow_stmt)).scalar_one())
-    outflow = float((await db.execute(outflow_stmt)).scalar_one())
-    return {"month": month, "inflow": inflow, "outflow": outflow, "net": round(inflow - outflow, 2)}
+    if mode == "cash":
+        bill_stmt = bill_stmt.where(Bill.payment_mode.in_(cash_modes))
+    elif mode == "bank":
+        bill_stmt = bill_stmt.where(Bill.payment_mode.in_(bank_modes))
+    bill_stmt = bill_stmt.group_by(func.date(Bill.created_at))
+    bill_rows = {str(row.day): float(row.total) for row in (await db.execute(bill_stmt)).all()}
+
+    # Expenses: day → cash_out
+    exp_stmt = select(
+        Expense.expense_date.label("day"),
+        func.coalesce(func.sum(Expense.amount), 0).label("total"),
+    ).where(
+        Expense.shop_id == shop_id,
+        Expense.expense_date >= d_from,
+        Expense.expense_date <= d_to,
+    ).group_by(Expense.expense_date)
+    exp_rows = {str(row.day): float(row.total) for row in (await db.execute(exp_stmt)).all()}
+
+    days = []
+    for d in all_dates:
+        key = str(d)
+        cash_in = bill_rows.get(key, 0.0)
+        cash_out = exp_rows.get(key, 0.0)
+        days.append({"date": key, "cash_in": cash_in, "cash_out": cash_out, "net": round(cash_in - cash_out, 2)})
+
+    total_in = sum(r["cash_in"] for r in days)
+    total_out = sum(r["cash_out"] for r in days)
+    return {"days": days, "total_in": round(total_in, 2), "total_out": round(total_out, 2), "net": round(total_in - total_out, 2)}
 
 
 @router.get("/stockout-risk", response_model=list[StockoutRiskOut])

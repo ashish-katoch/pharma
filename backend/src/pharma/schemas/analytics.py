@@ -69,6 +69,20 @@ class CashflowOut(BaseModel):
     net: float
 
 
+class CashflowDayRow(BaseModel):
+    date: str
+    cash_in: float
+    cash_out: float
+    net: float
+
+
+class CashflowRangeOut(BaseModel):
+    days: list[CashflowDayRow]
+    total_in: float
+    total_out: float
+    net: float
+
+
 class StockoutRiskOut(BaseModel):
     medicine_id: uuid.UUID
     name: str
