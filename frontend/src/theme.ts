@@ -123,6 +123,38 @@ export const SHADOWS = {
   lg: elevation(10, 24, 0.12, 12, 8),
 } as const;
 
+/**
+ * ACCENT + DARK — modern dark-theme design tokens (warm coral accent).
+ * Used by the redesigned mobile screens. Rolls out screen-by-screen.
+ */
+export const ACCENT = {
+  base: "#FF5A3C",
+  dark: "#E8461F",
+  soft: "rgba(255,90,60,0.16)",
+  on: "#FFFFFF",
+} as const;
+
+export const DARK = {
+  bg: "#0E1012",
+  surface: "#17191D",
+  surfaceHigh: "#1F2227",
+  surfaceHigher: "#282C32",
+  border: "#2B2F36",
+  borderSoft: "rgba(255,255,255,0.07)",
+  text: "#F5F6F8",
+  textSecondary: "#A9AFB8",
+  textMuted: "#71777F",
+  success: "#34D399",
+  successSoft: "rgba(52,211,153,0.15)",
+  warning: "#FBBF24",
+  warningSoft: "rgba(251,191,36,0.15)",
+  danger: "#F87171",
+  dangerSoft: "rgba(248,113,113,0.15)",
+  info: "#60A5FA",
+  infoSoft: "rgba(96,165,250,0.15)",
+} as const;
+
+
 export function expiryTone(expiry: string): { bg: string; fg: string; label: string } {
   const days = Math.floor(
     (new Date(expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24),

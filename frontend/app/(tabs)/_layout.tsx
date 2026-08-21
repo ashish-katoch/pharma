@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { COLORS } from "@/src/theme";
+import { DARK, ACCENT } from "@/src/theme";
 import { Platform, useWindowDimensions, View } from "react-native";
 
 export default function TabsLayout() {
@@ -10,17 +10,17 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={{ flex: 1, overflow: "hidden" }}>
+    <View style={{ flex: 1, overflow: "hidden", backgroundColor: DARK.bg }}>
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: COLORS.primary,
-          tabBarInactiveTintColor: COLORS.textMuted,
+          tabBarActiveTintColor: ACCENT.base,
+          tabBarInactiveTintColor: DARK.textMuted,
           tabBarStyle: isDesktop
             ? { display: "none" }
             : {
-                backgroundColor: COLORS.white,
-                borderTopColor: COLORS.border,
+                backgroundColor: DARK.surface,
+                borderTopColor: DARK.border,
                 borderTopWidth: 1,
                 height: 64 + insets.bottom,
                 paddingBottom: insets.bottom + 6,
