@@ -69,8 +69,8 @@ export default function Home() {
   return (
     <SafeAreaView style={[s.root, isDesktop && s.rootDesktop]} edges={["top"]}>
       <View style={isDesktop ? s.desktopCol : { flex: 1 }}>
-      {/* Header */}
-      <View style={s.header}>
+      {/* Header — hidden on desktop; sidebar carries brand + identity */}
+      <View style={[s.header, isDesktop && { display: "none" }]}>
         <View style={s.headerLeft}>
           <View style={s.logoMark}>
             <Feather name="activity" size={16} color={COLORS.primary} />

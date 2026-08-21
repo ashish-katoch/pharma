@@ -1,16 +1,17 @@
 import { useCallback, useState } from "react";
 import {
   View, Text, StyleSheet, FlatList, ActivityIndicator,
-  TouchableOpacity, Platform, useWindowDimensions,
+  TouchableOpacity,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { api } from "@/src/api";
 import { DatePicker } from "@/src/components/DatePicker";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
-const rupee = (n: number) => `₹${Math.abs(n).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+const rupee = (n: number) => `₹${Math.abs(Number(n) || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
 type LedgerEntry = {
   date: string;
@@ -77,9 +78,6 @@ export default function GeneralLedger() {
   const [data, setData] = useState<LedgerResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
-
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -101,18 +99,14 @@ export default function GeneralLedger() {
 
   const entries = data?.entries ?? [];
 
+  const RefreshBtn = (
+    <TouchableOpacity onPress={load} style={styles.refreshBtn}>
+      <Feather name="refresh-cw" size={16} color={COLORS.textMuted} />
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>General Ledger</Text>
-        <TouchableOpacity onPress={load} style={{ padding: 4 }}>
-          <Feather name="refresh-cw" size={18} color={COLORS.textMuted} />
-        </TouchableOpacity>
-      </View>
+    <PageShell title="General Ledger" rightAction={RefreshBtn} showBack scrollable={false} noPadding>
 
       {/* Preset chips */}
       <View style={styles.presetRow}>
@@ -168,10 +162,7 @@ export default function GeneralLedger() {
           keyExtractor={(e, i) => `${e.ref_id}-${i}`}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <View style={styles.emptyWrap}>
-              <Feather name="book-open" size={40} color={COLORS.border} />
-              <Text style={styles.empty}>No transactions for this period.</Text>
-            </View>
+            <EmptyState icon="book-open" title="No transactions" subtitle="No transactions found for this period." />
           }
           ListHeaderComponent={
             data ? (
@@ -219,27 +210,12 @@ export default function GeneralLedger() {
           }}
         />
       )}
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: "row", alignItems: "center", gap: SPACING.sm,
-    padding: SPACING.lg, backgroundColor: COLORS.white,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
-  },
-  title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
+  refreshBtn: { width: 34, height: 34, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" },
   presetRow: {
     flexDirection: "row", gap: SPACING.sm, padding: SPACING.md, paddingHorizontal: SPACING.lg,
     backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border,
@@ -273,8 +249,6 @@ const styles = StyleSheet.create({
   typeChipText: { fontSize: 11, fontWeight: "700", color: COLORS.textSecondary },
   typeChipTextActive: { color: COLORS.white },
   list: { padding: SPACING.lg, gap: 8, paddingBottom: 40 },
-  emptyWrap: { alignItems: "center", marginTop: 60, gap: 12 },
-  empty: { color: COLORS.textMuted, fontSize: 14 },
   summaryGrid: { flexDirection: "row", gap: SPACING.sm, marginBottom: SPACING.md },
   summaryCard: {
     flex: 1, borderRadius: RADIUS.md, borderWidth: 1,

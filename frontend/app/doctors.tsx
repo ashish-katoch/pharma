@@ -2,17 +2,18 @@ import { useCallback, useState } from "react";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, Modal,
+  TextInput, ActivityIndicator, Modal,
   KeyboardAvoidingView, Platform, ScrollView,
-  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import { confirmDestructive } from "@/src/confirm";
 import { alertMsg } from "@/src/dialog";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { SearchBar } from "@/src/components/ui/SearchBar";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 type Doctor = {
   id: string;
@@ -26,7 +27,6 @@ type Doctor = {
 const EMPTY: Omit<Doctor, "id"> = { name: "", phone: "", clinic: "", speciality: "", address: "" };
 
 export default function Doctors() {
-  const router = useRouter();
   const [list, setList] = useState<Doctor[]>([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,9 +34,6 @@ export default function Doctors() {
   const [editing, setEditing] = useState<Doctor | null>(null);
   const [form, setForm] = useState<Omit<Doctor, "id">>(EMPTY);
   const [saving, setSaving] = useState(false);
-
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
 
   const load = useCallback(async (query = q) => {
     setLoading(true);
@@ -49,7 +46,11 @@ export default function Doctors() {
   const debouncedLoad = useDebounce(load);
 
   const openAdd = () => { setEditing(null); setForm(EMPTY); setShowForm(true); };
-  const openEdit = (d: Doctor) => { setEditing(d); setForm({ name: d.name, phone: d.phone, clinic: d.clinic, speciality: d.speciality, address: d.address }); setShowForm(true); };
+  const openEdit = (d: Doctor) => {
+    setEditing(d);
+    setForm({ name: d.name, phone: d.phone, clinic: d.clinic, speciality: d.speciality, address: d.address });
+    setShowForm(true);
+  };
 
   const save = async () => {
     if (!form.name.trim()) { alertMsg("Required", "Doctor name is required"); return; }
@@ -76,66 +77,64 @@ export default function Doctors() {
   );
 
   const f = (key: keyof typeof form, label: string, opts?: { keyboard?: any; multiline?: boolean }) => (
-    <View style={{ gap: 4, marginBottom: SPACING.md }}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+    <View style={s.field} key={key}>
+      <Text style={s.fieldLabel}>{label}</Text>
       <TextInput
-        style={[styles.field, opts?.multiline && { minHeight: 70, textAlignVertical: "top", paddingTop: 10 }]}
+        style={[s.fieldInput, opts?.multiline && { minHeight: 70, textAlignVertical: "top", paddingTop: 10 }]}
         value={form[key]}
         onChangeText={(v) => setForm({ ...form, [key]: v })}
-        keyboardType={opts?.keyboard || "default"}
+        keyboardType={opts?.keyboard ?? "default"}
         multiline={opts?.multiline}
         placeholderTextColor={COLORS.textMuted}
       />
     </View>
   );
 
-  return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Doctor Referrals</Text>
-        <TouchableOpacity onPress={openAdd} style={styles.addBtn}>
-          <Feather name="user-plus" size={20} color={COLORS.white} />
-        </TouchableOpacity>
-      </View>
+  const AddBtn = (
+    <TouchableOpacity onPress={openAdd} style={s.addBtn} activeOpacity={0.85}>
+      <Feather name="user-plus" size={18} color={COLORS.white} />
+    </TouchableOpacity>
+  );
 
-      <View style={styles.searchRow}>
-        <Feather name="search" size={16} color={COLORS.textMuted} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search doctors or clinics…"
-          placeholderTextColor={COLORS.textMuted}
+  return (
+    <PageShell title="Doctor Referrals" rightAction={AddBtn} scrollable={false} noPadding>
+      <View style={s.searchWrap}>
+        <SearchBar
           value={q}
           onChangeText={(v) => { setQ(v); debouncedLoad(v); }}
+          placeholder="Search doctors or clinics…"
         />
       </View>
 
       {loading && list.length === 0 ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
+        <ActivityIndicator style={{ marginTop: 48 }} color={COLORS.primary} />
       ) : (
         <FlatList
           data={list}
           keyExtractor={(d) => d.id}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={<Text style={styles.empty}>No doctors yet. Tap + to add referral sources.</Text>}
+          contentContainerStyle={s.list}
+          ListEmptyComponent={
+            <EmptyState
+              icon="user"
+              title="No referral sources yet"
+              subtitle="Add doctors to track referrals and prescription sources."
+            />
+          }
           renderItem={({ item: d }) => (
-            <View style={styles.card}>
-              <View style={styles.avatar}>
-                <Feather name="user" size={18} color={COLORS.primary} />
+            <View style={s.card}>
+              <View style={s.avatar}>
+                <Feather name="user" size={17} color={COLORS.primary} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.doctorName}>Dr. {d.name}</Text>
-                {d.speciality ? <Text style={styles.meta}>{d.speciality}</Text> : null}
-                {d.clinic ? <Text style={styles.meta}>{d.clinic}</Text> : null}
-                {d.phone ? <Text style={styles.meta}>{d.phone}</Text> : null}
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.doctorName} numberOfLines={1}>Dr. {d.name}</Text>
+                <Text style={s.meta} numberOfLines={1}>
+                  {[d.speciality, d.clinic, d.phone].filter(Boolean).join("  ·  ")}
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => openEdit(d)} style={styles.iconBtn}>
+              <TouchableOpacity onPress={() => openEdit(d)} style={s.iconBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Feather name="edit-2" size={15} color={COLORS.textMuted} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => remove(d)} style={styles.iconBtn}>
+              <TouchableOpacity onPress={() => remove(d)} style={s.iconBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Feather name="trash-2" size={15} color={COLORS.danger} />
               </TouchableOpacity>
             </View>
@@ -144,60 +143,53 @@ export default function Doctors() {
       )}
 
       <Modal visible={showForm} animationType="slide" transparent onRequestClose={() => setShowForm(false)}>
-        <View style={styles.overlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.sheet}>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>{editing ? "Edit Doctor" : "New Doctor"}</Text>
-              <TouchableOpacity onPress={() => setShowForm(false)}>
-                <Feather name="x" size={24} color={COLORS.text} />
+        <View style={s.overlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={s.sheet}>
+            <View style={s.sheetHeader}>
+              <Text style={s.sheetTitle}>{editing ? "Edit Doctor" : "New Doctor"}</Text>
+              <TouchableOpacity onPress={() => setShowForm(false)} style={s.closeBtn}>
+                <Feather name="x" size={20} color={COLORS.textSecondary} />
               </TouchableOpacity>
             </View>
-            <ScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 40 }}>
+            <ScrollView contentContainerStyle={s.sheetBody} keyboardShouldPersistTaps="handled">
               {f("name", "Name *")}
               {f("speciality", "Speciality")}
               {f("clinic", "Clinic / Hospital")}
               {f("phone", "Phone", { keyboard: "phone-pad" })}
               {f("address", "Address", { multiline: true })}
-              <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={save} disabled={saving}>
-                {saving ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.saveBtnText}>Save</Text>}
+              <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={save} disabled={saving}>
+                {saving ? <ActivityIndicator color={COLORS.white} /> : <Text style={s.saveBtnText}>Save Doctor</Text>}
               </TouchableOpacity>
             </ScrollView>
           </KeyboardAvoidingView>
         </View>
       </Modal>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, padding: SPACING.lg, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
-  addBtn: { width: 36, height: 36, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  searchRow: { flexDirection: "row", alignItems: "center", gap: 6, margin: SPACING.lg, backgroundColor: COLORS.white, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: SPACING.sm },
-  searchInput: { flex: 1, height: 44, fontSize: 15, color: COLORS.text },
+const s = StyleSheet.create({
+  searchWrap: { paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm },
   list: { paddingHorizontal: SPACING.lg, paddingBottom: 40, gap: 8 },
-  empty: { textAlign: "center", color: COLORS.textMuted, marginTop: 40 },
-  card: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, backgroundColor: COLORS.white, padding: SPACING.md, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border },
+  card: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: COLORS.white, padding: 14,
+    borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border,
+  },
   avatar: { width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.primaryLight, alignItems: "center", justifyContent: "center" },
-  doctorName: { fontSize: 15, fontWeight: "700", color: COLORS.text },
-  meta: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
+  doctorName: { fontSize: 14, fontWeight: "600", color: COLORS.text },
+  meta: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  addBtn: { width: 36, height: 36, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   iconBtn: { padding: 6 },
   overlay: { flex: 1, backgroundColor: "rgba(15,23,42,0.55)", justifyContent: "flex-end" },
   sheet: { backgroundColor: COLORS.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: "90%" },
-  sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: SPACING.lg, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  sheetTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
-  fieldLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 1, color: COLORS.textSecondary },
-  field: { minHeight: 46, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingHorizontal: SPACING.md, backgroundColor: COLORS.surface, fontSize: 15, color: COLORS.text },
-  saveBtn: { minHeight: 52, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, alignItems: "center", justifyContent: "center", marginTop: SPACING.md },
-  saveBtnText: { color: COLORS.white, fontWeight: "800", fontSize: 16 },
+  sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: SPACING.lg, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  sheetTitle: { fontSize: 17, fontWeight: "700", color: COLORS.text },
+  closeBtn: { width: 32, height: 32, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceContainerLow, alignItems: "center", justifyContent: "center" },
+  sheetBody: { padding: SPACING.lg, paddingBottom: 40 },
+  field: { gap: 6, marginBottom: 16 },
+  fieldLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.8, color: COLORS.textSecondary, textTransform: "uppercase" },
+  fieldInput: { minHeight: 46, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingHorizontal: SPACING.md, backgroundColor: COLORS.surface, fontSize: 15, color: COLORS.text },
+  saveBtn: { minHeight: 52, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, alignItems: "center", justifyContent: "center", marginTop: 8 },
+  saveBtnText: { color: COLORS.white, fontWeight: "700", fontSize: 16 },
 });

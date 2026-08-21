@@ -2,17 +2,18 @@ import { useCallback, useState } from "react";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, Modal,
+  TextInput, ActivityIndicator, Modal,
   KeyboardAvoidingView, Platform, ScrollView,
-  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import { confirmDestructive } from "@/src/confirm";
 import { alertMsg } from "@/src/dialog";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { SearchBar } from "@/src/components/ui/SearchBar";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 type Supplier = {
   id: string;
@@ -25,7 +26,7 @@ type Supplier = {
   credit_limit: number;
 };
 
-const EMPTY: Supplier = { id: "", name: "", phone: "", email: "", address: "", gstin: "", dl_no: "", credit_limit: 0 };
+const EMPTY: Omit<Supplier, "id"> = { name: "", phone: "", email: "", address: "", gstin: "", dl_no: "", credit_limit: 0 };
 
 export default function Suppliers() {
   const router = useRouter();
@@ -36,9 +37,6 @@ export default function Suppliers() {
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [form, setForm] = useState<Omit<Supplier, "id">>(EMPTY);
   const [saving, setSaving] = useState(false);
-
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
 
   const load = useCallback(async (query = q) => {
     setLoading(true);
@@ -51,15 +49,10 @@ export default function Suppliers() {
   useFocusEffect(useCallback(() => { load(); }, [load]));
   const debouncedLoad = useDebounce(load);
 
-  function openAdd() {
-    setEditing(null);
-    setForm({ name: "", phone: "", email: "", address: "", gstin: "", dl_no: "", credit_limit: 0 });
-    setShowForm(true);
-  }
-
-  function openEdit(s: Supplier) {
-    setEditing(s);
-    setForm({ name: s.name, phone: s.phone, email: s.email, address: s.address, gstin: s.gstin, dl_no: s.dl_no, credit_limit: s.credit_limit });
+  function openAdd() { setEditing(null); setForm(EMPTY); setShowForm(true); }
+  function openEdit(sup: Supplier) {
+    setEditing(sup);
+    setForm({ name: sup.name, phone: sup.phone, email: sup.email, address: sup.address, gstin: sup.gstin, dl_no: sup.dl_no, credit_limit: sup.credit_limit });
     setShowForm(true);
   }
 
@@ -80,30 +73,24 @@ export default function Suppliers() {
     } finally { setSaving(false); }
   }
 
-  function remove(s: Supplier) {
+  function remove(sup: Supplier) {
     confirmDestructive(
-      `Delete "${s.name}"?`,
-      "This cannot be undone.",
-      "Delete",
+      `Delete "${sup.name}"?`, "This cannot be undone.", "Delete",
       async () => {
-        try {
-          await api(`/suppliers/${s.id}`, { method: "DELETE" });
-          load(q);
-        } catch (e: any) {
-          alertMsg("Error", e?.message || "Delete failed");
-        }
+        try { await api(`/suppliers/${sup.id}`, { method: "DELETE" }); load(q); }
+        catch (e: any) { alertMsg("Error", e?.message || "Delete failed"); }
       },
     );
   }
 
   const f = (key: keyof typeof form, label: string, opts?: { keyboard?: any; multiline?: boolean }) => (
-    <View style={{ gap: 4, marginBottom: SPACING.md }}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+    <View style={s.field} key={key}>
+      <Text style={s.fieldLabel}>{label}</Text>
       <TextInput
-        style={[styles.field, opts?.multiline && { minHeight: 70, textAlignVertical: "top", paddingTop: 10 }]}
+        style={[s.fieldInput, opts?.multiline && { minHeight: 70, textAlignVertical: "top", paddingTop: 10 }]}
         value={String(form[key])}
         onChangeText={(v) => setForm({ ...form, [key]: v })}
-        keyboardType={opts?.keyboard || "default"}
+        keyboardType={opts?.keyboard ?? "default"}
         multiline={opts?.multiline}
         placeholderTextColor={COLORS.textMuted}
         autoCapitalize="none"
@@ -111,58 +98,59 @@ export default function Suppliers() {
     </View>
   );
 
-  return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Suppliers</Text>
-        <TouchableOpacity onPress={openAdd} style={styles.addBtn}>
-          <Feather name="plus" size={20} color={COLORS.white} />
-        </TouchableOpacity>
-      </View>
+  const AddBtn = (
+    <TouchableOpacity onPress={openAdd} style={s.addBtn} activeOpacity={0.85}>
+      <Feather name="plus" size={18} color={COLORS.white} />
+    </TouchableOpacity>
+  );
 
-      <View style={styles.searchRow}>
-        <Feather name="search" size={16} color={COLORS.textMuted} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search suppliers…"
-          placeholderTextColor={COLORS.textMuted}
+  return (
+    <PageShell title="Suppliers" rightAction={AddBtn} scrollable={false} noPadding>
+      <View style={s.searchWrap}>
+        <SearchBar
           value={q}
           onChangeText={(v) => { setQ(v); debouncedLoad(v); }}
+          placeholder="Search suppliers…"
         />
       </View>
 
-      <TouchableOpacity style={styles.newPurchaseBar} onPress={() => router.push("/purchase-new")}>
-        <Feather name="shopping-bag" size={16} color={COLORS.primary} />
-        <Text style={styles.newPurchaseText}>New Purchase Entry</Text>
-        <Feather name="chevron-right" size={16} color={COLORS.textMuted} />
+      <TouchableOpacity style={s.newPurchaseBar} onPress={() => router.push("/purchase-new")} activeOpacity={0.85}>
+        <View style={s.newPurchaseIcon}>
+          <Feather name="shopping-bag" size={16} color={COLORS.primary} />
+        </View>
+        <Text style={s.newPurchaseText}>New Purchase Entry</Text>
+        <Feather name="chevron-right" size={16} color={COLORS.primary} />
       </TouchableOpacity>
 
       {loading && list.length === 0 ? (
-        <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
+        <ActivityIndicator style={{ marginTop: 48 }} color={COLORS.primary} />
       ) : (
         <FlatList
           data={list}
-          keyExtractor={(s) => s.id}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={<Text style={styles.empty}>No suppliers yet. Tap + to add.</Text>}
-          renderItem={({ item: s }) => (
-            <TouchableOpacity style={styles.card} onPress={() => router.push(`/supplier/${s.id}` as any)} activeOpacity={0.85}>
-              <View style={styles.avatar}>
-                <Feather name="truck" size={18} color={COLORS.primary} />
+          keyExtractor={(sup) => sup.id}
+          contentContainerStyle={s.list}
+          ListEmptyComponent={
+            <EmptyState
+              icon="truck"
+              title="No suppliers yet"
+              subtitle="Add suppliers to track purchases and payments."
+            />
+          }
+          renderItem={({ item: sup }) => (
+            <TouchableOpacity style={s.card} onPress={() => router.push(`/supplier/${sup.id}` as any)} activeOpacity={0.85}>
+              <View style={s.avatar}>
+                <Feather name="truck" size={17} color={COLORS.primary} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.supplierName}>{s.name}</Text>
-                {s.phone ? <Text style={styles.meta}>{s.phone}</Text> : null}
-                {s.gstin ? <Text style={styles.meta}>GSTIN: {s.gstin}</Text> : null}
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.supplierName} numberOfLines={1}>{sup.name}</Text>
+                <Text style={s.meta} numberOfLines={1}>
+                  {[sup.phone, sup.gstin && `GST: ${sup.gstin}`].filter(Boolean).join("  ·  ") || "No contact info"}
+                </Text>
               </View>
-              <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); openEdit(s); }} style={styles.iconBtn}>
+              <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); openEdit(sup); }} style={s.iconBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Feather name="edit-2" size={15} color={COLORS.textMuted} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); remove(s); }} style={styles.iconBtn}>
+              <TouchableOpacity onPress={(e) => { e.stopPropagation?.(); remove(sup); }} style={s.iconBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Feather name="trash-2" size={15} color={COLORS.danger} />
               </TouchableOpacity>
             </TouchableOpacity>
@@ -171,15 +159,15 @@ export default function Suppliers() {
       )}
 
       <Modal visible={showForm} animationType="slide" transparent onRequestClose={() => setShowForm(false)}>
-        <View style={styles.overlay}>
-          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.sheet}>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>{editing ? "Edit Supplier" : "New Supplier"}</Text>
-              <TouchableOpacity onPress={() => setShowForm(false)}>
-                <Feather name="x" size={24} color={COLORS.text} />
+        <View style={s.overlay}>
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={s.sheet}>
+            <View style={s.sheetHeader}>
+              <Text style={s.sheetTitle}>{editing ? "Edit Supplier" : "New Supplier"}</Text>
+              <TouchableOpacity onPress={() => setShowForm(false)} style={s.closeBtn}>
+                <Feather name="x" size={20} color={COLORS.textSecondary} />
               </TouchableOpacity>
             </View>
-            <ScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 40 }}>
+            <ScrollView contentContainerStyle={s.sheetBody} keyboardShouldPersistTaps="handled">
               {f("name", "Name *")}
               {f("phone", "Phone", { keyboard: "phone-pad" })}
               {f("email", "Email", { keyboard: "email-address" })}
@@ -187,48 +175,48 @@ export default function Suppliers() {
               {f("dl_no", "Drug License No.")}
               {f("address", "Address", { multiline: true })}
               {f("credit_limit", "Credit Limit (₹)", { keyboard: "numeric" })}
-              <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={save} disabled={saving}>
-                {saving ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.saveBtnText}>Save</Text>}
+              <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.6 }]} onPress={save} disabled={saving}>
+                {saving ? <ActivityIndicator color={COLORS.white} /> : <Text style={s.saveBtnText}>Save Supplier</Text>}
               </TouchableOpacity>
             </ScrollView>
           </KeyboardAvoidingView>
         </View>
       </Modal>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
+const s = StyleSheet.create({
+  searchWrap: { paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm },
+  newPurchaseBar: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: COLORS.primaryLight,
+    marginHorizontal: SPACING.lg, marginBottom: SPACING.sm,
+    padding: 14, borderRadius: RADIUS.md,
+    borderWidth: 1, borderColor: COLORS.primaryFixedDim,
   },
-  header: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, padding: SPACING.lg, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
-  addBtn: { width: 36, height: 36, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  searchRow: { flexDirection: "row", alignItems: "center", gap: 6, margin: SPACING.lg, backgroundColor: COLORS.white, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: SPACING.sm },
-  searchInput: { flex: 1, height: 44, fontSize: 15, color: COLORS.text },
-  newPurchaseBar: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, backgroundColor: COLORS.primaryLight, marginHorizontal: SPACING.lg, marginBottom: SPACING.sm, padding: SPACING.md, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.primary },
-  newPurchaseText: { flex: 1, fontSize: 14, fontWeight: "700", color: COLORS.primary },
+  newPurchaseIcon: { width: 30, height: 30, borderRadius: 8, backgroundColor: COLORS.white, alignItems: "center", justifyContent: "center" },
+  newPurchaseText: { flex: 1, fontSize: 14, fontWeight: "600", color: COLORS.primary },
   list: { paddingHorizontal: SPACING.lg, paddingBottom: 40, gap: 8 },
-  empty: { textAlign: "center", color: COLORS.textMuted, marginTop: 40 },
-  card: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, backgroundColor: COLORS.white, padding: SPACING.md, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border },
+  card: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: COLORS.white, padding: 14,
+    borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border,
+  },
   avatar: { width: 40, height: 40, borderRadius: RADIUS.md, backgroundColor: COLORS.primaryLight, alignItems: "center", justifyContent: "center" },
-  supplierName: { fontSize: 15, fontWeight: "700", color: COLORS.text },
-  meta: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
+  supplierName: { fontSize: 14, fontWeight: "600", color: COLORS.text },
+  meta: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  addBtn: { width: 36, height: 36, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   iconBtn: { padding: 6 },
   overlay: { flex: 1, backgroundColor: "rgba(15,23,42,0.55)", justifyContent: "flex-end" },
   sheet: { backgroundColor: COLORS.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: "90%" },
-  sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: SPACING.lg, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  sheetTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
-  fieldLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 1, color: COLORS.textSecondary },
-  field: { minHeight: 46, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingHorizontal: SPACING.md, backgroundColor: COLORS.surface, fontSize: 15, color: COLORS.text },
-  saveBtn: { minHeight: 52, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, alignItems: "center", justifyContent: "center", marginTop: SPACING.md },
-  saveBtnText: { color: COLORS.white, fontWeight: "800", fontSize: 16 },
+  sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: SPACING.lg, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  sheetTitle: { fontSize: 17, fontWeight: "700", color: COLORS.text },
+  closeBtn: { width: 32, height: 32, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceContainerLow, alignItems: "center", justifyContent: "center" },
+  sheetBody: { padding: SPACING.lg, paddingBottom: 40 },
+  field: { gap: 6, marginBottom: 16 },
+  fieldLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.8, color: COLORS.textSecondary, textTransform: "uppercase" },
+  fieldInput: { minHeight: 46, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingHorizontal: SPACING.md, backgroundColor: COLORS.surface, fontSize: 15, color: COLORS.text },
+  saveBtn: { minHeight: 52, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, alignItems: "center", justifyContent: "center", marginTop: 8 },
+  saveBtnText: { color: COLORS.white, fontWeight: "700", fontSize: 16 },
 });
