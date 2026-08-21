@@ -1,15 +1,11 @@
 import { useCallback, useState } from "react";
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  ActivityIndicator,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+  ActivityIndicator, Platform} from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Platform, useWindowDimensions } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { confirmDestructive } from "@/src/confirm";
 import { useSync } from "@/src/sync";
@@ -21,6 +17,8 @@ import {
 import { voidBillLocal } from "@/src/repositories/BillingRepository";
 import { SyncQueueEntry } from "@/src/repositories/types";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 const rupee = (n: number) =>
   `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -31,8 +29,6 @@ export default function OutboxScreen() {
   const [pending, setPending] = useState<SyncQueueEntry[]>([]);
   const [failed, setFailed] = useState<SyncQueueEntry[]>([]);
 
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
 
   const load = useCallback(async () => {
     if (Platform.OS === "web") return;
@@ -83,30 +79,7 @@ export default function OutboxScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top", "bottom"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} testID="outbox-back">
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Offline queue</Text>
-        <TouchableOpacity
-          onPress={doSync}
-          disabled={sync.syncing || pending.length === 0}
-          testID="outbox-sync-now"
-        >
-          {sync.syncing ? (
-            <ActivityIndicator color={COLORS.primary} />
-          ) : (
-            <Feather
-              name="refresh-cw"
-              size={22}
-              color={pending.length > 0 ? COLORS.primary : COLORS.textMuted}
-            />
-          )}
-        </TouchableOpacity>
-      </View>
-
+        <PageShell title="Offline Queue" showBack scrollable={false} noPadding>
       <View
         style={[
           styles.banner,
@@ -261,30 +234,11 @@ export default function OutboxScreen() {
           </TouchableOpacity>
         </View>
       )}
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.white,
-  },
   title: { fontSize: 18, fontWeight: "800", color: COLORS.text },
   banner: {
     flexDirection: "row",

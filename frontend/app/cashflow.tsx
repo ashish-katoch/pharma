@@ -1,16 +1,17 @@
 import { useCallback, useState } from "react";
 import {
   View, Text, StyleSheet, ActivityIndicator,
-  TouchableOpacity, ScrollView, Platform, useWindowDimensions,
+  TouchableOpacity, ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { api } from "@/src/api";
 import { DatePicker } from "@/src/components/DatePicker";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
-const rupee = (n: number) => `₹${Math.abs(n).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+const rupee = (n: number) => `₹${Math.abs(Number(n) || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 type DayRow = {
   date: string;
@@ -60,9 +61,6 @@ export default function Cashflow() {
   const [data, setData] = useState<CashflowResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
-
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -86,20 +84,15 @@ export default function Cashflow() {
   const maxVal = Math.max(...days.map((d) => Math.max(d.cash_in, d.cash_out)), 1);
   const activeDays = days.filter((d) => d.cash_in > 0 || d.cash_out > 0);
 
+  const title = bookMode === "cash" ? "Cash Book" : bookMode === "bank" ? "Bank Book" : "Cash Flow";
+  const RefreshBtn = (
+    <TouchableOpacity onPress={load} style={styles.refreshBtn}>
+      <Feather name="refresh-cw" size={16} color={COLORS.textMuted} />
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>
-          {bookMode === "cash" ? "Cash Book" : bookMode === "bank" ? "Bank Book" : "Cash Flow"}
-        </Text>
-        <TouchableOpacity onPress={load} style={{ padding: 4 }}>
-          <Feather name="refresh-cw" size={18} color={COLORS.textMuted} />
-        </TouchableOpacity>
-      </View>
+    <PageShell title={title} rightAction={RefreshBtn} showBack scrollable={false} noPadding>
 
       {/* Presets */}
       <View style={styles.presetRow}>
@@ -207,10 +200,7 @@ export default function Cashflow() {
           {/* Day-by-day list */}
           <Text style={styles.sectionLabel}>BREAKDOWN</Text>
           {activeDays.length === 0 ? (
-            <View style={styles.emptyWrap}>
-              <Feather name="activity" size={36} color={COLORS.border} />
-              <Text style={styles.empty}>No cash movements in this period.</Text>
-            </View>
+            <EmptyState icon="activity" title="No cash movements" subtitle="No transactions recorded for this period." />
           ) : (
             [...activeDays].reverse().map((d) => (
               <View key={d.date} style={styles.dayRow}>
@@ -237,27 +227,12 @@ export default function Cashflow() {
           )}
         </ScrollView>
       )}
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: "row", alignItems: "center", gap: SPACING.sm,
-    padding: SPACING.lg, backgroundColor: COLORS.white,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
-  },
-  title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
+  refreshBtn: { width: 34, height: 34, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" },
   presetRow: {
     flexDirection: "row", gap: SPACING.sm, padding: SPACING.md, paddingHorizontal: SPACING.lg,
     backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border,
@@ -319,8 +294,6 @@ const styles = StyleSheet.create({
   barIn:  { width: 10, borderRadius: 3, backgroundColor: "#86EFAC" },
   barOut: { width: 10, borderRadius: 3, backgroundColor: "#FCA5A5" },
   barLabel: { fontSize: 8, color: COLORS.textMuted, marginTop: 3 },
-  emptyWrap: { alignItems: "center", marginTop: 40, gap: 12 },
-  empty: { color: COLORS.textMuted, fontSize: 14 },
   dayRow: {
     flexDirection: "row", alignItems: "center", gap: SPACING.sm,
     backgroundColor: COLORS.white, borderRadius: RADIUS.md,

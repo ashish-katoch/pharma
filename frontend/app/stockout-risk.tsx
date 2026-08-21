@@ -1,13 +1,14 @@
 import { useCallback, useState } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Platform, useWindowDimensions,
+  ActivityIndicator, RefreshControl,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { api } from "@/src/api";
 import { COLORS, SPACING, RADIUS } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 type RiskItem = {
   medicine_id: string;
@@ -32,8 +33,6 @@ type Filter = typeof FILTERS[number];
 
 export default function StockoutRiskScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [items, setItems] = useState<RiskItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
@@ -107,18 +106,7 @@ export default function StockoutRiskScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Stock-Out Risk</Text>
-        <TouchableOpacity onPress={load} style={{ padding: 4 }}>
-          <Feather name="refresh-cw" size={18} color={COLORS.textMuted} />
-        </TouchableOpacity>
-      </View>
-
+        <PageShell title="Stock-Out Risk" showBack scrollable={false} noPadding>
       {/* Summary cards */}
       {!loading && (
         <View style={styles.summaryRow}>
@@ -178,26 +166,11 @@ export default function StockoutRiskScreen() {
           }
         />
       )}
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: "row", alignItems: "center", gap: SPACING.sm,
-    padding: SPACING.lg, backgroundColor: COLORS.white,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
-  },
   title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   summaryRow: {
     flexDirection: "row", gap: SPACING.sm, padding: SPACING.md,

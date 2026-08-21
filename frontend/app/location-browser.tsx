@@ -7,14 +7,13 @@ import {
   FlatList,
   ActivityIndicator,
   TextInput,
-  Platform,
-  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { api } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 type Med = {
   id: string;
@@ -39,8 +38,6 @@ function parseLocation(loc: string): ParsedLoc {
 
 export default function LocationBrowser() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [all, setAll] = useState<Med[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -96,8 +93,7 @@ export default function LocationBrowser() {
   };
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
+        <PageShell title="Location Browser" showBack scrollable={false} noPadding>
       <View style={styles.header}>
         <TouchableOpacity onPress={goBack} style={{ padding: 4 }}>
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -256,8 +252,7 @@ export default function LocationBrowser() {
           />
         </>
       )}
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 

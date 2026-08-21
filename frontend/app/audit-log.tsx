@@ -7,14 +7,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Platform,
-  useWindowDimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import { COLORS, SPACING, RADIUS } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 type AuditEvent = {
   id?: string;
@@ -51,8 +50,6 @@ function humanAction(action: string) {
 
 export default function AuditLogScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -103,16 +100,7 @@ export default function AuditLogScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Audit Log</Text>
-        <Text style={styles.count}>{events.length} events</Text>
-      </View>
-
+        <PageShell title="Audit Log" showBack scrollable={false} noPadding>
       {loading ? (
         <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
       ) : (
@@ -130,30 +118,11 @@ export default function AuditLogScreen() {
           }
         />
       )}
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.white,
-  },
   title: { fontSize: 17, fontWeight: "700", color: COLORS.text, flex: 1, marginLeft: SPACING.md },
   count: { fontSize: 12, color: COLORS.textSecondary, fontWeight: "600" },
   card: {

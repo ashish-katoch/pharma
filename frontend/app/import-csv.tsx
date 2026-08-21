@@ -1,17 +1,12 @@
 import { useState } from "react";
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   Alert,
-  TextInput,
-  Platform,
-  useWindowDimensions,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+  TextInput, Platform} from "react-native";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
@@ -20,6 +15,8 @@ import { api } from "@/src/api";
 import { alertMsg, alertNav } from "@/src/dialog";
 import { parseMedicineCsv, ParsedMedicine, TEMPLATE_CSV } from "@/src/csv";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 const rupee = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
@@ -35,8 +32,6 @@ async function readTextFromUri(uri: string): Promise<string> {
 
 export default function ImportCsv() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [rows, setRows] = useState<ParsedMedicine[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [fileName, setFileName] = useState("");
@@ -98,16 +93,7 @@ export default function ImportCsv() {
   };
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top", "bottom"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} testID="import-back">
-          <Feather name="x" size={26} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Import medicines</Text>
-        <View style={{ width: 26 }} />
-      </View>
-
+        <PageShell title="Import Medicines" showBack scrollable={false} noPadding>
       <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: SPACING.md }} keyboardShouldPersistTaps="handled">
         <Text style={styles.help}>
           Upload a CSV to add many medicines at once. First row must be a header.
@@ -205,30 +191,11 @@ export default function ImportCsv() {
           </TouchableOpacity>
         </View>
       )}
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.white,
-  },
   title: { fontSize: 18, fontWeight: "800", color: COLORS.text },
   help: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 19 },
   actionsRow: { flexDirection: "row", gap: SPACING.md },
@@ -266,7 +233,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.text,
     textAlignVertical: "top",
-    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+    fontFamily:Platform.OS === "ios" ? "Courier" : "monospace",
   },
   parsePasteBtn: {
     alignSelf: "flex-start",

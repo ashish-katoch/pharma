@@ -2,16 +2,15 @@ import { useCallback, useState } from "react";
 import { useDebounce } from "@/src/hooks/useDebounce";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, Modal, FlatList,
-  Platform,
-  useWindowDimensions
+  TextInput, ActivityIndicator, Alert, Modal, FlatList
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import { alertMsg, alertNav } from "@/src/dialog";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 import { DatePicker } from "@/src/components/DatePicker";
 
 const rupee = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -39,8 +38,6 @@ const REASONS = [
 ];
 
 export default function SupplierReturn() {
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const router = useRouter();
   const [step, setStep] = useState<"supplier" | "batches" | "review">("supplier");
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -142,22 +139,7 @@ export default function SupplierReturn() {
   };
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => step === "supplier" ? router.back() : setStep(step === "review" ? "batches" : "supplier")} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>
-          {step === "supplier" ? "Supplier Return" : step === "batches" ? selectedSupplier?.name ?? "" : "Review Return"}
-        </Text>
-        {step === "batches" && lines.length > 0 && (
-          <TouchableOpacity onPress={() => setStep("review")} style={styles.nextBtn}>
-            <Text style={styles.nextBtnText}>Review →</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
+        <PageShell title="Supplier Return" showBack scrollable={false} noPadding>
       {/* Step indicators */}
       <View style={styles.stepRow}>
         {["Select Supplier", "Add Items", "Review"].map((s, i) => {
@@ -312,22 +294,11 @@ export default function SupplierReturn() {
           </View>
         </View>
       </Modal>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  header: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, padding: SPACING.lg, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   title: { flex: 1, fontSize: 17, fontWeight: "700", color: COLORS.text },
   nextBtn: { paddingHorizontal: SPACING.md, paddingVertical: 8, backgroundColor: COLORS.primaryLight, borderRadius: RADIUS.md },
   nextBtnText: { fontSize: 13, fontWeight: "700", color: COLORS.primary },

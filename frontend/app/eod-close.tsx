@@ -1,16 +1,14 @@
 import { useEffect, useState } from "react";
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, Platform,
-  useWindowDimensions,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  TextInput, ActivityIndicator, Alert, Platform} from "react-native";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import { useIsOwner } from "@/src/auth";
 import { alertMsg, alertNav } from "@/src/dialog";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 const rupee = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
@@ -51,8 +49,6 @@ export default function EodClose() {
   const [closing, setClosing] = useState(false);
   const [alreadyClosed, setAlreadyClosed] = useState(false);
 
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
 
   useEffect(() => {
     async function load() {
@@ -115,43 +111,24 @@ export default function EodClose() {
 
   if (!isOwner) {
     return (
-      <SafeAreaView style={styles.root} edges={["top"]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-            <Feather name="arrow-left" size={22} color={COLORS.text} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Close Day</Text>
-          <View style={{ width: 30 }} />
-        </View>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12 }}>
-          <Feather name="lock" size={40} color={COLORS.textMuted} />
-          <Text style={{ fontSize: 16, fontWeight: "800", color: COLORS.text }}>Owner Only</Text>
-          <Text style={{ fontSize: 14, color: COLORS.textMuted, textAlign: "center" }}>EOD close requires owner access.</Text>
-        </View>
-      </SafeAreaView>
+      <PageShell title="Close Day" showBack>
+        <EmptyState icon="lock" title="Owner Only" subtitle="EOD close requires owner access." />
+      </PageShell>
     );
   }
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.root} edges={["top"]}>
+      <PageShell title="Close Day" showBack>
         <ActivityIndicator style={{ marginTop: 80 }} color={COLORS.primary} />
-      </SafeAreaView>
+      </PageShell>
     );
   }
 
   const cashDiff = preview ? parseFloat(cashActual || "0") - preview.cash_expected : 0;
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>EOD Reconciliation</Text>
-      </View>
-
+    <PageShell title="Close Day" showBack scrollable={false} noPadding>
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Today's summary */}
         <View style={styles.dateRow}>
@@ -243,8 +220,7 @@ export default function EodClose() {
           </>
         )}
       </ScrollView>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 

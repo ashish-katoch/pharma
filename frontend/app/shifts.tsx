@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   View, Text, StyleSheet, FlatList, ActivityIndicator,
-  TouchableOpacity, Alert, Platform, useWindowDimensions,
+  TouchableOpacity, Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { api } from "@/src/api";
 import { useAuth, useIsOwner } from "@/src/auth";
 import { alertMsg } from "@/src/dialog";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 type Shift = {
   id: string;
@@ -47,9 +48,6 @@ export default function Shifts() {
   const [loading, setLoading] = useState(true);
   const [clocking, setClocking] = useState(false);
   const [elapsed, setElapsed] = useState("");
-
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,15 +114,7 @@ export default function Shifts() {
     .reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0);
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Shift Tracking</Text>
-      </View>
-
+    <PageShell title="Shift Tracking" showBack scrollable={false} noPadding>
       {/* Clock card */}
       <View style={[styles.clockCard, active && styles.clockCardActive]}>
         <View style={styles.clockInfo}>
@@ -170,10 +160,7 @@ export default function Shifts() {
           keyExtractor={(s) => s.id}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <View style={styles.emptyWrap}>
-              <Feather name="clock" size={36} color={COLORS.border} />
-              <Text style={styles.empty}>No shifts recorded today.</Text>
-            </View>
+            <EmptyState icon="clock" title="No shifts today" subtitle="Clock in to start tracking your shift." />
           }
           ListHeaderComponent={
             shifts.length > 0 ? (
@@ -227,27 +214,11 @@ export default function Shifts() {
           )}
         />
       )}
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: "row", alignItems: "center", gap: SPACING.sm,
-    padding: SPACING.lg, backgroundColor: COLORS.white,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
-  },
-  title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   clockCard: {
     margin: SPACING.lg, borderRadius: RADIUS.lg, padding: SPACING.lg,
     backgroundColor: COLORS.white, borderWidth: 1.5, borderColor: COLORS.border,
@@ -268,8 +239,6 @@ const styles = StyleSheet.create({
   clockBtnText: { fontSize: 16, fontWeight: "900", color: COLORS.white },
   clockBtnTextOut: { color: COLORS.danger },
   list: { padding: SPACING.lg, gap: SPACING.sm, paddingBottom: 40 },
-  emptyWrap: { alignItems: "center", marginTop: 40, gap: 10 },
-  empty: { color: COLORS.textMuted, fontSize: 14 },
   summaryRow: { flexDirection: "row", gap: SPACING.sm, marginBottom: SPACING.sm },
   summaryCard: {
     flex: 1, backgroundColor: COLORS.white, borderRadius: RADIUS.md,

@@ -1,21 +1,18 @@
 import { useState, useCallback } from "react";
-import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert, ScrollView, Platform, useWindowDimensions,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {View, Text, StyleSheet, TouchableOpacity, TextInput,
+  ActivityIndicator, Alert, ScrollView, Platform} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { api } from "@/src/api";
 import { COLORS, SPACING, RADIUS } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 type SetupResp = { secret: string; otpauth_url: string };
 type StatusResp = { enabled: boolean; pyotp_available: boolean };
 
 export default function Setup2FA() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [status, setStatus] = useState<StatusResp | null>(null);
   const [setup, setSetup] = useState<SetupResp | null>(null);
   const [code, setCode] = useState("");
@@ -71,16 +68,7 @@ export default function Setup2FA() {
   };
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Two-Factor Auth</Text>
-        <View style={{ width: 30 }} />
-      </View>
-
+        <PageShell title="Two-Factor Auth" showBack scrollable={false} noPadding>
       {loading ? (
         <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
       ) : (
@@ -217,26 +205,11 @@ export default function Setup2FA() {
           )}
         </ScrollView>
       )}
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: "row", alignItems: "center", gap: SPACING.sm,
-    padding: SPACING.lg, backgroundColor: COLORS.white,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
-  },
   title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   scroll: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 40 },
   statusBadge: {
@@ -282,11 +255,11 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: COLORS.border, padding: SPACING.md,
     width: "100%",
   },
-  secretText: { fontFamily: Platform.OS === "ios" ? "Courier New" : "monospace", fontSize: 14, color: COLORS.text, textAlign: "center", letterSpacing: 2 },
+  secretText: { fontFamily:Platform.OS === "ios" ? "Courier New" : "monospace", fontSize: 14, color: COLORS.text, textAlign: "center", letterSpacing: 2 },
   secretHint: { fontSize: 11, color: COLORS.textMuted },
   manualEntry: { gap: 4 },
   manualLabel: { fontSize: 11, fontWeight: "700", color: COLORS.textMuted, letterSpacing: 0.5 },
-  manualURL: { fontSize: 10, color: COLORS.textSecondary, fontFamily: Platform.OS === "ios" ? "Courier New" : "monospace" },
+  manualURL: { fontSize: 10, color: COLORS.textSecondary, fontFamily:Platform.OS === "ios" ? "Courier New" : "monospace" },
   codeInput: {
     height: 56, borderWidth: 2, borderColor: COLORS.primary, borderRadius: RADIUS.md,
     textAlign: "center", fontSize: 28, fontWeight: "900", color: COLORS.text,

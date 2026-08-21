@@ -1,15 +1,14 @@
 import { useState, useRef } from "react";
-import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Alert, ActivityIndicator, TextInput, Platform, useWindowDimensions,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  Alert, ActivityIndicator, TextInput, Platform} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import { api } from "@/src/api";
 import { COLORS, SPACING, RADIUS } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 type ParsedLine = {
   raw: string;
@@ -39,8 +38,6 @@ type ImportResp = { ok: boolean; purchase_id: string; lines_imported: number; to
 
 export default function ScanInvoiceScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResp | null>(null);
   const [selectedLines, setSelectedLines] = useState<Set<number>>(new Set());
@@ -232,26 +229,7 @@ export default function ScanInvoiceScreen() {
   const allMatched = importLines.length > 0 && importLines.every((l) => l.matched);
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => {
-          if (step !== "upload") { setStep("upload"); return; }
-          if (router.canGoBack()) router.back();
-          else router.replace("/(tabs)/home" as any);
-        }} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Scan Invoice</Text>
-        {step !== "upload" && (
-          <View style={styles.stepBadge}>
-            <Text style={styles.stepBadgeText}>
-              {step === "review" ? "Step 1/2" : step === "match" ? "Step 2/2" : "Done"}
-            </Text>
-          </View>
-        )}
-      </View>
-
+        <PageShell title="Scan Invoice" showBack scrollable={false} noPadding>
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* ===== UPLOAD STEP ===== */}
         {step === "upload" && (
@@ -529,26 +507,11 @@ export default function ScanInvoiceScreen() {
           </>
         )}
       </ScrollView>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: "row", alignItems: "center", gap: SPACING.sm,
-    padding: SPACING.lg, backgroundColor: COLORS.white,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
-  },
   title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   stepBadge: {
     backgroundColor: "#EFF6FF", borderRadius: RADIUS.sm,

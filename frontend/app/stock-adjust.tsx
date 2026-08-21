@@ -2,14 +2,15 @@ import { useEffect, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, ActivityIndicator, Alert, FlatList, Modal,
-  KeyboardAvoidingView, Platform, useWindowDimensions,
+  KeyboardAvoidingView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import { alertMsg, alertNav } from "@/src/dialog";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 type Medicine = { id: string; name: string; strength: string };
 type Batch = { id: string; batch_no: string; expiry: string; quantity: number; medicine_id: string };
@@ -36,8 +37,6 @@ export default function StockAdjust() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
 
   useEffect(() => {
     if (!medQ.trim()) { setMedResults([]); return; }
@@ -99,15 +98,7 @@ export default function StockAdjust() {
   }
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => { if (step === "medicine") router.back(); else if (step === "batch") setStep("medicine"); else setStep("batch"); }} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Stock Adjustment</Text>
-      </View>
-
+        <PageShell title="Stock Adjustment" showBack scrollable={false} noPadding>
       {/* Steps indicator */}
       <View style={styles.stepsRow}>
         {["Medicine", "Batch", "Details"].map((s, i) => {
@@ -220,22 +211,11 @@ export default function StockAdjust() {
           </TouchableOpacity>
         </ScrollView>
       )}
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: { flexDirection: "row", alignItems: "center", gap: SPACING.sm, padding: SPACING.lg, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   stepsRow: { flexDirection: "row", justifyContent: "center", gap: SPACING.xl, padding: SPACING.md, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   stepItem: { alignItems: "center", gap: 4 },

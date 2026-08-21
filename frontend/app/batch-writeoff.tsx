@@ -10,12 +10,12 @@ import {
   TextInput,
   Modal,
   ScrollView,
-  Platform,
-  useWindowDimensions,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { api } from "@/src/api";
 import { COLORS, SPACING, RADIUS } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 import { useAuth } from "@/src/auth";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -31,8 +31,6 @@ type ExpiringBatch = {
 
 export default function BatchWriteoffScreen() {
   const { user } = useAuth();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [batches, setBatches] = useState<ExpiringBatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(90);
@@ -137,33 +135,26 @@ export default function BatchWriteoffScreen() {
     );
   };
 
-  return (
-    <View style={[styles.container, isDesktop && styles.containerDesktop]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Expiry Write-Off</Text>
-        <View style={styles.filterRow}>
-          {[30, 60, 90, 180].map((d) => (
-            <TouchableOpacity
-              key={d}
-              style={[styles.chip, days === d && styles.chipActive]}
-              onPress={() => setDays(d)}
-            >
-              <Text style={[styles.chipText, days === d && styles.chipTextActive]}>
-                {d}d
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
+  const FilterChips = (
+    <View style={styles.filterRow}>
+      {[30, 60, 90, 180].map((d) => (
+        <TouchableOpacity
+          key={d}
+          style={[styles.chip, days === d && styles.chipActive]}
+          onPress={() => setDays(d)}
+        >
+          <Text style={[styles.chipText, days === d && styles.chipTextActive]}>{d}d</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
 
+  return (
+    <PageShell title="Expiry Write-Off" showBack scrollable={false} noPadding rightAction={FilterChips}>
       {loading ? (
         <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
       ) : batches.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="checkmark-circle-outline" size={48} color={COLORS.textSecondary} />
-          <Text style={styles.emptyText}>No batches expiring in {days} days</Text>
-        </View>
+        <EmptyState icon="check-circle" title={`No batches expiring in ${days} days`} tone="success" />
       ) : (
         <FlatList
           data={batches}
@@ -172,7 +163,6 @@ export default function BatchWriteoffScreen() {
           contentContainerStyle={{ padding: SPACING.md }}
         />
       )}
-      </View>
 
       <Modal visible={!!selectedBatch} transparent animationType="slide">
         <View style={styles.overlay}>
@@ -201,17 +191,10 @@ export default function BatchWriteoffScreen() {
                   multiline
                 />
                 <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={styles.cancelBtn}
-                    onPress={() => setSelectedBatch(null)}
-                  >
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setSelectedBatch(null)}>
                     <Text style={styles.cancelBtnText}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.confirmBtn}
-                    onPress={confirmWriteoff}
-                    disabled={submitting}
-                  >
+                  <TouchableOpacity style={styles.confirmBtn} onPress={confirmWriteoff} disabled={submitting}>
                     {submitting ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
@@ -224,7 +207,7 @@ export default function BatchWriteoffScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </PageShell>
   );
 }
 

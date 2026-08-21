@@ -1,13 +1,14 @@
 import { useState, useRef } from "react";
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  FlatList, ActivityIndicator, Keyboard, Platform, useWindowDimensions,
+  FlatList, ActivityIndicator, Keyboard,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { api } from "@/src/api";
 import { COLORS, SPACING, RADIUS } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 type Medicine = {
   id: string;
@@ -27,8 +28,6 @@ const QUICK_SYMPTOMS = [
 
 export default function MedicineSuggestScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Medicine[]>([]);
   const [loading, setLoading] = useState(false);
@@ -69,15 +68,7 @@ export default function MedicineSuggestScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Medicine Suggestions</Text>
-      </View>
-
+        <PageShell title="Medicine Suggestions" showBack scrollable={false} noPadding>
       <View style={styles.searchWrap}>
         <View style={styles.searchRow}>
           <Feather name="activity" size={18} color={COLORS.textMuted} />
@@ -141,26 +132,11 @@ export default function MedicineSuggestScreen() {
           }
         />
       )}
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: "row", alignItems: "center", gap: SPACING.sm,
-    padding: SPACING.lg, backgroundColor: COLORS.white,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
-  },
   title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   searchWrap: {
     flexDirection: "row", gap: SPACING.sm, padding: SPACING.md,

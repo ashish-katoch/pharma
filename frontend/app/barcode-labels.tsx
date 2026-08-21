@@ -1,18 +1,15 @@
 import { useCallback, useState } from "react";
-import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Alert, FlatList, Modal,
-  useWindowDimensions,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  TextInput, ActivityIndicator, Alert, FlatList, Modal, Platform} from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Platform } from "react-native";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import { alertMsg } from "@/src/dialog";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 type Medicine = { id: string; name: string; brand: string; strength: string; pack: string; mrp: number };
 type Batch = { id: string; batch_no: string; expiry: string; quantity: number; mrp: number };
@@ -119,8 +116,6 @@ function buildLabelHtml(med: Medicine, batch: Batch, count: number, shopName: st
 
 export default function BarcodeLabels() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const [medQ, setMedQ] = useState("");
   const [meds, setMeds] = useState<Medicine[]>([]);
   const [selectedMed, setSelectedMed] = useState<Medicine | null>(null);
@@ -177,8 +172,7 @@ export default function BarcodeLabels() {
   };
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
+        <PageShell title="Barcode Labels" showBack scrollable={false} noPadding>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
           <Feather name="arrow-left" size={22} color={COLORS.text} />
@@ -295,8 +289,7 @@ export default function BarcodeLabels() {
           </View>
         </View>
       </Modal>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 

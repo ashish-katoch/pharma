@@ -1,14 +1,15 @@
 import { useCallback, useState } from "react";
 import {
   View, Text, StyleSheet, FlatList, ActivityIndicator,
-  TouchableOpacity, Platform, useWindowDimensions,
+  TouchableOpacity,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { api } from "@/src/api";
 import { DatePicker } from "@/src/components/DatePicker";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 const rupee = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
@@ -36,8 +37,6 @@ function isoOffset(days: number) {
 
 export default function StaffReport() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const today = new Date().toISOString().slice(0, 10);
   const [preset, setPreset] = useState<0 | 7 | 30 | -1>(0);
   const [dateFrom, setDateFrom] = useState(today);
@@ -70,15 +69,7 @@ export default function StaffReport() {
   const grandBills = rows.reduce((s, r) => s + r.bill_count, 0);
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Staff Sales Report</Text>
-      </View>
-
+    <PageShell title="Staff Sales Report" showBack scrollable={false} noPadding>
       {/* Preset chips */}
       <View style={styles.presetRow}>
         {PRESETS.map((p) => (
@@ -115,10 +106,7 @@ export default function StaffReport() {
           keyExtractor={(r) => r.email}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <View style={styles.emptyWrap}>
-              <Feather name="bar-chart-2" size={40} color={COLORS.border} />
-              <Text style={styles.empty}>No sales data for this period.</Text>
-            </View>
+            <EmptyState icon="bar-chart-2" title="No sales data" subtitle="No staff sales found for this period." />
           }
           ListHeaderComponent={
             rows.length > 0 ? (
@@ -180,27 +168,11 @@ export default function StaffReport() {
           }}
         />
       )}
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
 const styles = StyleSheet.create({
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  header: {
-    flexDirection: "row", alignItems: "center", gap: SPACING.sm,
-    padding: SPACING.lg, backgroundColor: COLORS.white,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
-  },
-  title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
   presetRow: {
     flexDirection: "row", gap: SPACING.sm, flexWrap: "wrap",
     paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md,
@@ -224,8 +196,6 @@ const styles = StyleSheet.create({
   },
   applyBtnText: { color: COLORS.white, fontWeight: "800", fontSize: 13 },
   list: { padding: SPACING.lg, gap: SPACING.md, paddingBottom: 40 },
-  emptyWrap: { alignItems: "center", marginTop: 60, gap: 12 },
-  empty: { color: COLORS.textMuted, fontSize: 14 },
   summaryRow: { flexDirection: "row", gap: SPACING.sm, marginBottom: SPACING.md },
   summaryCard: {
     flex: 1, backgroundColor: COLORS.white, borderRadius: RADIUS.md,

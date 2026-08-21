@@ -1,23 +1,20 @@
 import { useEffect, useState } from "react";
-import {
-  View,
+import {View,
   Text,
   TextInput,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  useWindowDimensions,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+  KeyboardAvoidingView, Platform} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import { alertMsg, alertNav } from "@/src/dialog";
 import { Medicine } from "@/src/cart";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 import { requestScan, cancelScan } from "@/src/scanBus";
 import { DatePicker } from "@/src/components/DatePicker";
 
@@ -32,8 +29,6 @@ export default function StockIn() {
   const [selected, setSelected] = useState<Medicine | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
 
   // batch form
   const [batchNo, setBatchNo] = useState("");
@@ -147,16 +142,7 @@ export default function StockIn() {
   };
 
   return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top", "bottom"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} testID="stock-in-back">
-          <Feather name="x" size={26} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Stock In</Text>
-        <View style={{ width: 26 }} />
-      </View>
-
+        <PageShell title="Stock In" showBack scrollable={false} noPadding>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: SPACING.lg, gap: SPACING.md }} keyboardShouldPersistTaps="handled">
           {mode === "select" && (
@@ -340,8 +326,7 @@ export default function StockIn() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
@@ -376,24 +361,6 @@ function Row2({ children }: any) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    backgroundColor: COLORS.white,
-  },
   title: { fontSize: 18, fontWeight: "800", color: COLORS.text },
   stepLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 1.5, color: COLORS.textMuted, marginTop: 4 },
   searchBox: {

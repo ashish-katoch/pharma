@@ -1,16 +1,17 @@
 import { useCallback, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator,
-  TouchableOpacity, Platform, useWindowDimensions,
+  TouchableOpacity,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { api } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { PageShell } from "@/src/components/PageShell";
+import { EmptyState } from "@/src/components/ui/EmptyState";
 
 const rupee = (n: number) =>
-  `₹${Math.abs(n).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+  `₹${Math.abs(Number(n) || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 type CatRow = { category: string; amount: number };
 
@@ -68,8 +69,6 @@ function catIcon(c: string)  { return (CAT_ICONS[c] ?? "tag") as any; }
 
 export default function PnlBreakdown() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const isDesktop = Platform.OS === "web" && width >= 768;
   const today = currentMonth();
   const [month, setMonth] = useState(today);
   const [data, setData] = useState<PnlData | null>(null);
@@ -89,20 +88,14 @@ export default function PnlBreakdown() {
   const maxCat = Math.max(...cats.map((c) => c.amount), 1);
   const netProfit = data?.net_profit ?? data?.gross_profit ?? 0;
 
-  return (
-    <SafeAreaView style={[styles.root, isDesktop && styles.rootDesktop]} edges={["top"]}>
-      <View style={isDesktop ? styles.desktopCol : { flex: 1 }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 4 }}>
-          <Feather name="arrow-left" size={22} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>P&amp;L Breakdown</Text>
-        <TouchableOpacity onPress={load} style={{ padding: 4 }}>
-          <Feather name="refresh-cw" size={18} color={COLORS.textMuted} />
-        </TouchableOpacity>
-      </View>
+  const RefreshBtn = (
+    <TouchableOpacity onPress={load} style={styles.refreshBtn}>
+      <Feather name="refresh-cw" size={16} color={COLORS.textMuted} />
+    </TouchableOpacity>
+  );
 
+  return (
+    <PageShell title="P&L Breakdown" rightAction={RefreshBtn} showBack scrollable={false} noPadding>
       {/* Month nav */}
       <View style={styles.monthNav}>
         <TouchableOpacity onPress={() => setMonth(prevMonth(month))} style={styles.monthBtn}>
@@ -121,10 +114,7 @@ export default function PnlBreakdown() {
       {loading ? (
         <ActivityIndicator style={{ marginTop: 48 }} color={COLORS.primary} />
       ) : !data ? (
-        <View style={styles.emptyWrap}>
-          <Feather name="alert-circle" size={36} color={COLORS.border} />
-          <Text style={styles.emptyText}>Could not load data.</Text>
-        </View>
+        <EmptyState icon="alert-circle" title="Could not load data" subtitle="Check your connection and try again." />
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
 
@@ -182,9 +172,7 @@ export default function PnlBreakdown() {
               </View>
 
               {cats.length === 0 ? (
-                <View style={styles.emptyWrap}>
-                  <Text style={styles.emptyText}>No category data available.</Text>
-                </View>
+                <EmptyState icon="inbox" title="No category data" subtitle="No expense categories found for this month." />
               ) : (
                 cats
                   .slice()
@@ -274,8 +262,7 @@ export default function PnlBreakdown() {
           </View>
         </ScrollView>
       )}
-      </View>
-    </SafeAreaView>
+    </PageShell>
   );
 }
 
@@ -317,21 +304,7 @@ function _Kpi({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  rootDesktop: { backgroundColor: "#F0F2F8" },
-  desktopCol: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 900,
-    alignSelf: "center",
-    backgroundColor: COLORS.surface,
-  },
-  root: { flex: 1, backgroundColor: COLORS.surface },
-  header: {
-    flexDirection: "row", alignItems: "center", gap: SPACING.sm,
-    padding: SPACING.lg, backgroundColor: COLORS.white,
-    borderBottomWidth: 1, borderBottomColor: COLORS.border,
-  },
-  title: { flex: 1, fontSize: 18, fontWeight: "700", color: COLORS.text },
+  refreshBtn: { width: 34, height: 34, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" },
   monthNav: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     padding: SPACING.md, paddingHorizontal: SPACING.lg,
@@ -412,6 +385,4 @@ const styles = StyleSheet.create({
   },
   kpiVal: { fontSize: 16, fontWeight: "900", color: COLORS.text, letterSpacing: -0.5 },
   kpiLbl: { fontSize: 10, fontWeight: "700", color: COLORS.textMuted, letterSpacing: 0.5, textAlign: "center" },
-  emptyWrap: { alignItems: "center", marginTop: 40, gap: 12 },
-  emptyText: { color: COLORS.textMuted, fontSize: 14 },
 });
