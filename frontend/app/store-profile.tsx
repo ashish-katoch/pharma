@@ -13,6 +13,7 @@ type Shop = {
   phone: string;
   gstin: string;
   dl_no: string;
+  invoice_prefix: string;
 };
 
 export default function StoreProfile() {
@@ -76,6 +77,16 @@ export default function StoreProfile() {
         <FieldRow label="GSTIN" value={shop.gstin} onChange={(v) => setShop({ ...shop, gstin: v })} />
         <FieldRow label="Drug Licence No." value={shop.dl_no} onChange={(v) => setShop({ ...shop, dl_no: v })} />
       </View>
+
+      <Text style={s.sectionLabel}>BILLING</Text>
+      <View style={s.card}>
+        <FieldRow
+          label="Invoice Prefix"
+          value={shop.invoice_prefix ?? "INV"}
+          onChange={(v) => setShop({ ...shop, invoice_prefix: v.toUpperCase() })}
+          hint="Appears before the bill number — e.g. INV-000001"
+        />
+      </View>
     </PageShell>
   );
 }
@@ -86,9 +97,10 @@ type FieldRowProps = {
   onChange: (v: string) => void;
   multiline?: boolean;
   keyboardType?: import("react-native").KeyboardTypeOptions;
+  hint?: string;
 };
 
-function FieldRow({ label, value, onChange, multiline, keyboardType }: FieldRowProps) {
+function FieldRow({ label, value, onChange, multiline, keyboardType, hint }: FieldRowProps) {
   return (
     <View style={{ gap: 6 }}>
       <Text style={s.fieldLabel}>{label}</Text>
@@ -100,6 +112,7 @@ function FieldRow({ label, value, onChange, multiline, keyboardType }: FieldRowP
         keyboardType={keyboardType}
         placeholderTextColor={COLORS.textMuted}
       />
+      {hint ? <Text style={s.hint}>{hint}</Text> : null}
     </View>
   );
 }
@@ -111,4 +124,5 @@ const s = StyleSheet.create({
   field: { minHeight: 48, borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingHorizontal: SPACING.md, paddingVertical: 10, backgroundColor: COLORS.surface, fontSize: 15, color: COLORS.text },
   primaryBtn: { minHeight: 52, backgroundColor: COLORS.primary, borderRadius: RADIUS.md, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 },
   primaryBtnText: { color: COLORS.white, fontSize: 16, fontWeight: "800" },
+  hint: { fontSize: 11, color: COLORS.textMuted, fontWeight: "500" },
 });

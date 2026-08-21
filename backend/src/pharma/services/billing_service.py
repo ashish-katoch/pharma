@@ -12,6 +12,7 @@ from pharma.models.counter import Counter
 from pharma.models.customer import CreditLedgerEntry, Customer
 from pharma.models.medicine import Medicine
 from pharma.models.misc import Doctor
+from pharma.models.shop import Shop
 from pharma.models.transient_state import TransientState
 from pharma.schemas.bill import BillCreateIn, BillEditIn, BillLineIn, ReturnCreateIn
 
@@ -26,7 +27,9 @@ async def _next_bill_no(db: AsyncSession, shop_id: uuid.UUID) -> str:
         db.add(counter)
         await db.flush()
     counter.value += 1
-    return f"INV-{counter.value:06d}"
+    shop = await db.get(Shop, shop_id)
+    prefix = shop.invoice_prefix if shop and shop.invoice_prefix else "INV"
+    return f"{prefix}-{counter.value:06d}"
 
 
 async def _fefo_pick_and_price(

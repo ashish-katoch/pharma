@@ -204,7 +204,7 @@ export default function Reports() {
       } else if (tab === "drugreg") {
         setDrugRegData(await api<DrugRegRow[]>(`/reports/schedule-h?month=${drugRegMonth}`));
       } else if (tab === "doctors") {
-        setDoctorData(await api<DoctorStat[]>(`/analytics/doctors?month=${doctorMonth}`));
+        setDoctorData(await api<DoctorStat[]>(`/analytics/doctor-revenue?month=${doctorMonth}`));
       } else if (tab === "purchases") {
         setPurchaseData(await api<PurchaseAnalytics>(`/analytics/purchases?month=${purchaseMonth}`));
       } else if (tab === "vendors") {
@@ -348,6 +348,19 @@ export default function Reports() {
     finally { setExporting(false); }
   };
 
+  const exportDoctors = async () => {
+    if (!doctorData) return;
+    setExporting(true);
+    try {
+      await exportCSV(
+        `Doctors_${doctorMonth}.csv`,
+        "Doctor,Bills,Revenue",
+        doctorData.map((d) => [d.doctor_name, String(d.bill_count), String(d.revenue)])
+      );
+    } catch (e: any) { alertMsg("Export failed", e?.message ?? ""); }
+    finally { setExporting(false); }
+  };
+
   const exportInventory = async () => {
     setExporting(true);
     try {
@@ -469,17 +482,25 @@ export default function Reports() {
         </View>
       )}
 
-      {/* Doctors month nav */}
+      {/* Doctors month nav + export */}
       {isDoctorsTab && (
-        <View style={styles.monthNav}>
-          <TouchableOpacity onPress={() => changeDoctorMonth(prevMonth(doctorMonth))} style={styles.monthArrow}>
-            <Feather name="chevron-left" size={22} color={COLORS.primary} />
-          </TouchableOpacity>
-          <Text style={styles.monthLabel}>{monthLabel(doctorMonth)}</Text>
-          <TouchableOpacity onPress={() => { const n = nextMonth(doctorMonth); if (n <= currentMonth()) changeDoctorMonth(n); }} style={styles.monthArrow}>
-            <Feather name="chevron-right" size={22} color={doctorMonth < currentMonth() ? COLORS.primary : COLORS.textMuted} />
-          </TouchableOpacity>
-        </View>
+        <>
+          <View style={styles.monthNav}>
+            <TouchableOpacity onPress={() => changeDoctorMonth(prevMonth(doctorMonth))} style={styles.monthArrow}>
+              <Feather name="chevron-left" size={22} color={COLORS.primary} />
+            </TouchableOpacity>
+            <Text style={styles.monthLabel}>{monthLabel(doctorMonth)}</Text>
+            <TouchableOpacity onPress={() => { const n = nextMonth(doctorMonth); if (n <= currentMonth()) changeDoctorMonth(n); }} style={styles.monthArrow}>
+              <Feather name="chevron-right" size={22} color={doctorMonth < currentMonth() ? COLORS.primary : COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+          {doctorData && doctorData.length > 0 && (
+            <TouchableOpacity style={styles.exportBtn} onPress={exportDoctors} disabled={exporting}>
+              {exporting ? <ActivityIndicator color={COLORS.white} size="small" /> : <Feather name="download" size={14} color={COLORS.white} />}
+              <Text style={styles.exportBtnText}>Export CSV</Text>
+            </TouchableOpacity>
+          )}
+        </>
       )}
 
       {/* Purchases month nav + export */}

@@ -19,5 +19,6 @@ class Shop(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     vertical: Mapped[str] = mapped_column(String(50), nullable=False, default="pharmacy")
     gstin: Mapped[str | None] = mapped_column(String(20), nullable=True)
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    invoice_prefix: Mapped[str] = mapped_column(String(20), nullable=False, default="INV")
 
     organization: Mapped[Organization] = relationship(back_populates="shops")
