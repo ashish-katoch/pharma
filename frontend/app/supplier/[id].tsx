@@ -19,6 +19,7 @@ import { useFocusEffect } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import { alertMsg } from "@/src/dialog";
+import { useAuth } from "@/src/auth";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
 const rupee = (n: number) => `₹${(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -36,6 +37,7 @@ type Purchase = {
   paid_amount: number;
   payment_mode: string;
   created_at: string;
+  status?: string;
 };
 
 type Payment = {
@@ -76,9 +78,17 @@ type LedgerRow =
   | { kind: "purchase"; date: string; data: Purchase }
   | { kind: "payment"; date: string; data: Payment };
 
+const STATUS_META: Record<string, { label: string; bg: string; fg: string }> = {
+  received:  { label: "Received",  bg: "#DCFCE7", fg: "#16A34A" },
+  pending:   { label: "Pending",   bg: "#FEF3C7", fg: "#D97706" },
+  cancelled: { label: "Cancelled", bg: "#FEE2E2", fg: "#DC2626" },
+};
+
 export default function SupplierDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
+  const isOwner = user?.role === "owner";
   const [supplier, setSupplier] = useState<Supplier | null>(null);
   const [loading, setLoading] = useState(true);
   const [payModal, setPayModal] = useState(false);
@@ -87,6 +97,7 @@ export default function SupplierDetail() {
   const [payMode, setPayMode] = useState("cash");
   const [paying, setPaying] = useState(false);
   const [tab, setTab] = useState<"ledger" | "purchases">("ledger");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const { width } = useWindowDimensions();
   const isDesktop = Platform.OS === "web" && width >= 768;
@@ -264,40 +275,83 @@ export default function SupplierDetail() {
           )
         )}
 
-        {tab === "purchases" && (
-          supplier.purchases.length === 0 ? (
-            <View style={styles.empty}><Feather name="shopping-bag" size={32} color={COLORS.textMuted} /><Text style={styles.emptyText}>No purchases yet</Text></View>
-          ) : (
-            supplier.purchases.map((p) => {
-              const modeStyle = MODE_COLOR[p.payment_mode] ?? { bg: COLORS.surface, fg: COLORS.textSecondary };
-              const unpaid = Math.max(0, (p.total_amount || 0) - (p.paid_amount || 0));
-              return (
-                <View key={p.id} style={styles.purchaseCard}>
-                  <View style={styles.purchaseTop}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.invoiceNo}>{p.invoice_no || "No invoice no."}</Text>
-                      <Text style={styles.purchaseDate}>{fmtDate(p.invoice_date || p.created_at)}</Text>
-                    </View>
-                    <Text style={styles.purchaseTotal}>{rupee(p.total_amount)}</Text>
-                  </View>
-                  <View style={styles.purchaseMeta}>
-                    <View style={[styles.modeBadge, { backgroundColor: modeStyle.bg }]}>
-                      <Text style={[styles.modeBadgeText, { color: modeStyle.fg }]}>{(p.payment_mode || "").toUpperCase()}</Text>
-                    </View>
-                    {unpaid > 0 ? (
-                      <Text style={styles.unpaidText}>Unpaid {rupee(unpaid)}</Text>
-                    ) : (
-                      <View style={styles.paidBadge}>
-                        <Feather name="check" size={10} color={COLORS.success} />
-                        <Text style={styles.paidText}>Paid</Text>
+        {tab === "purchases" && (() => {
+          const filtered = supplier.purchases.filter((p) =>
+            statusFilter === "all" ? true : (p.status ?? "received") === statusFilter
+          );
+          const markReceived = async (purchaseId: string) => {
+            try {
+              await api(`/purchases/${purchaseId}/status?status=received`, { method: "PUT" });
+              setSupplier((prev) => prev ? {
+                ...prev,
+                purchases: prev.purchases.map((p) => p.id === purchaseId ? { ...p, status: "received" } : p),
+              } : prev);
+            } catch (e: any) { alertMsg("Error", e?.message || "Failed to update"); }
+          };
+          return (
+            <>
+              {/* Status filter chips */}
+              <View style={styles.statusFilterRow}>
+                {["all", "pending", "received", "cancelled"].map((s) => (
+                  <TouchableOpacity
+                    key={s}
+                    style={[styles.filterChip, statusFilter === s && styles.filterChipActive]}
+                    onPress={() => setStatusFilter(s)}
+                  >
+                    <Text style={[styles.filterChipText, statusFilter === s && styles.filterChipTextActive]}>
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {filtered.length === 0 ? (
+                <View style={styles.empty}><Feather name="shopping-bag" size={32} color={COLORS.textMuted} /><Text style={styles.emptyText}>No purchases</Text></View>
+              ) : (
+                filtered.map((p) => {
+                  const modeStyle = MODE_COLOR[p.payment_mode] ?? { bg: COLORS.surface, fg: COLORS.textSecondary };
+                  const unpaid = Math.max(0, (p.total_amount || 0) - (p.paid_amount || 0));
+                  const pStatus = p.status ?? "received";
+                  const statusMeta = STATUS_META[pStatus] ?? STATUS_META.received;
+                  return (
+                    <View key={p.id} style={styles.purchaseCard}>
+                      <View style={styles.purchaseTop}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.invoiceNo}>{p.invoice_no || "No invoice no."}</Text>
+                          <Text style={styles.purchaseDate}>{fmtDate(p.invoice_date || p.created_at)}</Text>
+                        </View>
+                        <View style={{ alignItems: "flex-end", gap: 4 }}>
+                          <Text style={styles.purchaseTotal}>{rupee(p.total_amount)}</Text>
+                          <View style={[styles.statusBadge, { backgroundColor: statusMeta.bg }]}>
+                            <Text style={[styles.statusBadgeText, { color: statusMeta.fg }]}>{statusMeta.label}</Text>
+                          </View>
+                        </View>
                       </View>
-                    )}
-                  </View>
-                </View>
-              );
-            })
-          )
-        )}
+                      <View style={styles.purchaseMeta}>
+                        <View style={[styles.modeBadge, { backgroundColor: modeStyle.bg }]}>
+                          <Text style={[styles.modeBadgeText, { color: modeStyle.fg }]}>{(p.payment_mode || "").toUpperCase()}</Text>
+                        </View>
+                        {unpaid > 0 ? (
+                          <Text style={styles.unpaidText}>Unpaid {rupee(unpaid)}</Text>
+                        ) : (
+                          <View style={styles.paidBadge}>
+                            <Feather name="check" size={10} color={COLORS.success} />
+                            <Text style={styles.paidText}>Paid</Text>
+                          </View>
+                        )}
+                        {isOwner && pStatus === "pending" && (
+                          <TouchableOpacity style={styles.markReceivedBtn} onPress={() => markReceived(p.id)}>
+                            <Feather name="check-circle" size={12} color={COLORS.white} />
+                            <Text style={styles.markReceivedText}>Mark Received</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </>
+          );
+        })()}
       </ScrollView>
 
       {/* Record payment modal */}
@@ -423,4 +477,13 @@ const styles = StyleSheet.create({
   modeChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   modeChipText: { fontSize: 12, fontWeight: "700", color: COLORS.textSecondary },
   modeChipTextActive: { color: COLORS.white },
+  statusFilterRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingHorizontal: SPACING.lg, paddingBottom: SPACING.sm },
+  filterChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: RADIUS.pill, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.white },
+  filterChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  filterChipText: { fontSize: 12, fontWeight: "700", color: COLORS.textSecondary },
+  filterChipTextActive: { color: COLORS.white },
+  statusBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: RADIUS.pill },
+  statusBadgeText: { fontSize: 10, fontWeight: "800" },
+  markReceivedBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: COLORS.success, paddingHorizontal: 10, paddingVertical: 4, borderRadius: RADIUS.md, marginLeft: "auto" },
+  markReceivedText: { fontSize: 11, fontWeight: "700", color: COLORS.white },
 });
