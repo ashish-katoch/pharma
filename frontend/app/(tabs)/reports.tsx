@@ -411,24 +411,28 @@ export default function Reports() {
         {isDesktop ? (
           <View style={styles.tabsDesktop}>{tabButtons}</View>
         ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
-            {tabButtons}
-          </ScrollView>
+          <View style={{ height: 52 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs} style={{ flex: 1 }}>
+              {tabButtons}
+            </ScrollView>
+          </View>
         )}
 
       {/* Expiring window chips */}
       {tab === "expiring" && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.windowRow}>
-          {[30, 60, 90].map((w) => (
-            <TouchableOpacity
-              key={w} testID={`reports-window-${w}`}
-              style={[styles.chip, window === w && styles.chipActive]}
-              onPress={() => setWindow(w as any)}
-            >
-              <Text style={[styles.chipText, window === w && styles.chipTextActive]}>{w} days</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <View style={{ height: 50 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.windowRow} style={{ flex: 1 }}>
+            {[30, 60, 90].map((w) => (
+              <TouchableOpacity
+                key={w} testID={`reports-window-${w}`}
+                style={[styles.chip, window === w && styles.chipActive]}
+                onPress={() => setWindow(w as any)}
+              >
+                <Text style={[styles.chipText, window === w && styles.chipTextActive]}>{w} days</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
       )}
 
       {/* GST month nav */}
@@ -1111,7 +1115,7 @@ function EmptyBlock({ icon, label, tone }: { icon: string; label: string; tone: 
 const styles = StyleSheet.create({
   header: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: 8 },
   title: { fontSize: 26, fontWeight: "800", color: COLORS.text, letterSpacing: -0.5 },
-  tabs: { paddingHorizontal: SPACING.lg, paddingVertical: 8, gap: 8 },
+  tabs: { paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm, gap: 6, alignItems: "center" },
   tabsDesktop: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1124,15 +1128,15 @@ const styles = StyleSheet.create({
   },
   tab: {
     flexDirection: "row", gap: 5, alignItems: "center",
-    paddingHorizontal: SPACING.md, paddingVertical: 9,
+    paddingHorizontal: 14, height: 36,
     borderRadius: RADIUS.pill, borderWidth: 1, borderColor: COLORS.border,
     backgroundColor: COLORS.white,
   },
   tabActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   tabText: { fontSize: 12, fontWeight: "700", color: COLORS.textSecondary },
   tabTextActive: { color: COLORS.white },
-  windowRow: { paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, gap: 8 },
-  chip: { flexShrink: 0, height: 36, paddingHorizontal: SPACING.md, borderRadius: RADIUS.pill, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.white, alignItems: "center", justifyContent: "center" },
+  windowRow: { paddingHorizontal: SPACING.lg, paddingVertical: SPACING.sm, gap: 8 },
+  chip: { flexShrink: 0, height: 34, paddingHorizontal: SPACING.md, borderRadius: RADIUS.pill, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.white, alignItems: "center", justifyContent: "center" },
   chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   chipText: { fontSize: 13, fontWeight: "700", color: COLORS.textSecondary },
   chipTextActive: { color: COLORS.white },

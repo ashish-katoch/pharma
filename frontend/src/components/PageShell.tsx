@@ -140,10 +140,10 @@ export function PageShell({
 const s = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.bg,
   },
   rootDesktop: {
-    backgroundColor: "#F0F2F8",
+    backgroundColor: COLORS.bg,
   },
 
   /* ── HEADER ── */

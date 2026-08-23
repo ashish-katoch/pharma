@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { DARK, ACCENT } from "@/src/theme";
+import { COLORS } from "@/src/theme";
 import { Platform, useWindowDimensions, View } from "react-native";
 
 export default function TabsLayout() {
@@ -10,20 +10,20 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={{ flex: 1, overflow: "hidden", backgroundColor: DARK.bg }}>
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: ACCENT.base,
-          tabBarInactiveTintColor: DARK.textMuted,
+          tabBarActiveTintColor:   COLORS.primary,
+          tabBarInactiveTintColor: COLORS.textMuted,
           tabBarStyle: isDesktop
             ? { display: "none" }
             : {
-                backgroundColor: DARK.surface,
-                borderTopColor: DARK.border,
-                borderTopWidth: 1,
-                height: 64 + insets.bottom,
-                paddingBottom: insets.bottom + 6,
+                backgroundColor: COLORS.surface,
+                borderTopColor:  COLORS.border,
+                borderTopWidth:  1,
+                height: 60 + insets.bottom,
+                paddingBottom: insets.bottom + 4,
                 paddingTop: 8,
               },
           tabBarLabelStyle: {
@@ -37,35 +37,45 @@ export default function TabsLayout() {
           name="home"
           options={{
             title: "Home",
-            tabBarIcon: ({ color }) => <Feather name="home" size={22} color={color} />,
+            tabBarIcon: ({ color, focused }) => (
+              <Feather name="home" size={22} color={focused ? COLORS.primary : COLORS.textMuted} />
+            ),
           }}
         />
         <Tabs.Screen
           name="billing"
           options={{
             title: "Billing",
-            tabBarIcon: ({ color }) => <Feather name="shopping-cart" size={22} color={color} />,
+            tabBarIcon: ({ color, focused }) => (
+              <Feather name="shopping-cart" size={22} color={focused ? COLORS.primary : COLORS.textMuted} />
+            ),
           }}
         />
         <Tabs.Screen
           name="inventory"
           options={{
             title: "Inventory",
-            tabBarIcon: ({ color }) => <Feather name="package" size={22} color={color} />,
+            tabBarIcon: ({ color, focused }) => (
+              <Feather name="package" size={22} color={focused ? COLORS.primary : COLORS.textMuted} />
+            ),
           }}
         />
         <Tabs.Screen
           name="reports"
           options={{
             title: "Reports",
-            tabBarIcon: ({ color }) => <Feather name="bar-chart-2" size={22} color={color} />,
+            tabBarIcon: ({ color, focused }) => (
+              <Feather name="bar-chart-2" size={22} color={focused ? COLORS.primary : COLORS.textMuted} />
+            ),
           }}
         />
         <Tabs.Screen
           name="settings"
           options={{
             title: "Settings",
-            tabBarIcon: ({ color }) => <Feather name="settings" size={22} color={color} />,
+            tabBarIcon: ({ color, focused }) => (
+              <Feather name="settings" size={22} color={focused ? COLORS.primary : COLORS.textMuted} />
+            ),
           }}
         />
       </Tabs>

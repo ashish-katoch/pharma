@@ -72,6 +72,11 @@ export default function Inventory() {
     return true;
   });
 
+  const totalCount = medicines.length;
+  const lowCount = medicines.filter((m) => m.total_stock > 0 && m.total_stock <= (m.reorder_level ?? 10)).length;
+  const outCount = medicines.filter((m) => m.total_stock === 0).length;
+  const totalValue = medicines.reduce((s, m) => s + (m.total_stock || 0) * (m.mrp || 0), 0);
+
   return (
     <PageShell scrollable={false} noPadding>
       <View style={styles.header}>
@@ -79,7 +84,7 @@ export default function Inventory() {
         <View style={{ flexDirection: "row", gap: SPACING.sm }}>
           <TouchableOpacity
             testID="inventory-import-button"
-            style={[styles.addBtn, { backgroundColor: COLORS.text }]}
+            style={[styles.addBtn, { backgroundColor: COLORS.dark }]}
             onPress={() => router.push("/import-csv")}
             activeOpacity={0.85}
           >
@@ -95,6 +100,27 @@ export default function Inventory() {
             <Feather name="plus" size={18} color={COLORS.white} />
             <Text style={styles.addBtnText}>Stock In</Text>
           </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Bento summary row */}
+      <View style={styles.bentoRow}>
+        <View style={[styles.bentoCard, styles.bentoHero]}>
+          <Text style={styles.bentoHeroValue}>{totalCount}</Text>
+          <Text style={styles.bentoHeroLabel}>Total Products</Text>
+          <Text style={styles.bentoHeroSub}>{rupee(totalValue)} stock value</Text>
+        </View>
+        <View style={styles.bentoRight}>
+          <View style={[styles.bentoSmall, { borderColor: COLORS.warningBg }]}>
+            <Feather name="alert-triangle" size={14} color={COLORS.warning} />
+            <Text style={[styles.bentoSmallValue, { color: COLORS.warning }]}>{lowCount}</Text>
+            <Text style={styles.bentoSmallLabel}>Low Stock</Text>
+          </View>
+          <View style={[styles.bentoSmall, { borderColor: COLORS.dangerBg }]}>
+            <Feather name="x-circle" size={14} color={COLORS.danger} />
+            <Text style={[styles.bentoSmallValue, { color: COLORS.danger }]}>{outCount}</Text>
+            <Text style={styles.bentoSmallLabel}>Out of Stock</Text>
+          </View>
         </View>
       </View>
 
@@ -194,8 +220,41 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.sm,
   },
+  bentoRow: {
+    flexDirection: "row",
+    gap: SPACING.sm,
+    marginHorizontal: SPACING.lg,
+    marginBottom: SPACING.md,
+  },
+  bentoHero: {
+    flex: 1,
+    backgroundColor: COLORS.dark,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md,
+    justifyContent: "flex-end",
+    minHeight: 100,
+  },
+  bentoHeroValue: { fontSize: 32, fontWeight: "800", color: COLORS.white, letterSpacing: -1 },
+  bentoHeroLabel: { fontSize: 11, fontWeight: "700", color: "rgba(255,255,255,0.6)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 2 },
+  bentoHeroSub: { fontSize: 11, color: "rgba(255,255,255,0.45)", marginTop: 2 },
+  bentoRight: { gap: SPACING.sm, justifyContent: "space-between" },
+  bentoCard: {},
+  bentoSmall: {
+    width: 110,
+    backgroundColor: COLORS.white,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    padding: SPACING.sm,
+    gap: 2,
+    flex: 1,
+  },
+  bentoSmallValue: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
+  bentoSmallLabel: { fontSize: 10, fontWeight: "600", color: COLORS.textSecondary, textTransform: "uppercase", letterSpacing: 0.3 },
   title: { fontSize: 26, fontWeight: "800", color: COLORS.text, letterSpacing: -0.5 },
   addBtn: {
     flexDirection: "row",
